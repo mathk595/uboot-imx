@@ -650,7 +650,17 @@ dtb-$(CONFIG_RCAR_GEN2) += \
 	r8a7792-blanche-u-boot.dtb \
 	r8a7793-gose-u-boot.dtb \
 	r8a7794-alt-u-boot.dtb \
-	r8a7794-silk-u-boot.dtb
+	r8a7794-silk-u-boot.dtb \
+	kuk-trizeps8.dtb
+
+dtb-$(CONFIG_ARCH_IMX8) += fsl-imx8dx-17x17-val.dtb \
+		fsl-imx8qm-ddr4-arm2.dtb \
+		fsl-imx8qm-lpddr4-arm2.dtb \
+		fsl-imx8qm-mek.dtb \
+		fsl-imx8qm-mek-xen.dtb \
+		fsl-imx8qxp-17x17-val.dtb \
+		fsl-imx8qxp-lpddr4-arm2.dtb \
+		fsl-imx8qxp-mek.dtb
 
 dtb-$(CONFIG_RCAR_GEN3) += \
 	r8a7795-h3ulcb-u-boot.dtb \
