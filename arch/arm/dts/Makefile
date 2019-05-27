@@ -641,6 +641,9 @@ dtb-$(CONFIG_ARCH_IMX8M) += fsl-imx8mq-evk.dtb \
 		fsl-imx8mn-evk.dtb \
 		fsl-imx8mq-aiy.dtb \
 		fsl-imx8mp-evk.dtb
+		kuk-trizeps8.dtb \
+		kuk-trizeps8.dtb \
+		kuk-trizeps8mini.dtb
 
 dtb-$(CONFIG_RCAR_GEN2) += \
 	r8a7790-lager-u-boot.dtb \
@@ -651,7 +654,7 @@ dtb-$(CONFIG_RCAR_GEN2) += \
 	r8a7793-gose-u-boot.dtb \
 	r8a7794-alt-u-boot.dtb \
 	r8a7794-silk-u-boot.dtb \
-	kuk-trizeps8.dtb
+
 
 dtb-$(CONFIG_ARCH_IMX8) += fsl-imx8dx-17x17-val.dtb \
 		fsl-imx8qm-ddr4-arm2.dtb \

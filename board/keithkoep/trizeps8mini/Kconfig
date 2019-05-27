@@ -1,0 +1,14 @@
+if TARGET_TRIZEPS8MINI
+
+config SYS_BOARD
+	default "trizeps8mini"
+
+config SYS_VENDOR
+	default "keithkoep"
+
+config SYS_CONFIG_NAME
+	default "trizeps8mini"
+
+source "board/keithkoep/common/Kconfig"
+
+endif
