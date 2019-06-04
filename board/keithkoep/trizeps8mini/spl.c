@@ -166,6 +166,9 @@ int power_init_board(void)
 	pmic_reg_write(p, BD71837_BUCK8_VOLT, 0x28);
 #endif
 
+	/* Set VDD_FPGA_MIPI to 2.5V */
+	pmic_reg_write(p, BD71837_LDO5_VOLT, 0xC7);
+
 	/* lock the PMIC regs */
 	pmic_reg_write(p, BD71837_REGLOCK, 0x11);
 
