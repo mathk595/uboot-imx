@@ -115,6 +115,13 @@
 #define CONFIG_PHY_ATHEROS
 #endif
 
+
+#define CONFIG_LOADADDR			0x40480000
+
+#define CONFIG_SYS_LOAD_ADDR             CONFIG_LOADADDR
+#define SCRIPT_ADDR                      (CONFIG_LOADADDR-0x80000)
+
+
 /*
  * Another approach is add the clocks for inmates into clks_init_on
  * in clk-imx8mm.c, then clk_ingore_unused could be removed.
@@ -163,6 +170,7 @@
 	"image=Image\0" \
 	"console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200\0" \
 	"fdt_addr=0x43000000\0"			\
+    "script_addr=" __stringify(SCRIPT_ADDR) "\0"  \
 	"fdt_high=0xffffffffffffffff\0"		\
 	"boot_fdt=try\0" \
 	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
@@ -170,14 +178,30 @@
 	"initrd_high=0xffffffffffffffff\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
+	"partfdtandroid=8\0" \
 	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
+	"mmcpartext4=1\0" \
 	"mmcautodetect=yes\0" \
-	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 " \
-	"loadbootscript=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
-	"bootscript=echo Running bootscript from mmc ...; " \
-		"source\0" \
-	"loadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
-	"loadfdt=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
+        "bootsector=66\0"     \
+	"brickme_sd=mmc erase $bootsector 10\0" \
+        "brickme_mmc=mmc partconf 0 1 0 1 ; mmc erase $bootsector 10 ;mmc partconf 0 1 1 1 ; mmc erase $bootsector 10 ;mmc partconf 0 0 0 0 ; mmc erase $bootsector 10 \0" \
+	"update_bl=mmc partconf 0 0 0 0 ; ums 0 mmc 0 \0"	                                    \
+	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 "                   \
+	"loadbootscriptext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${script_addr} ${script};\0"      \
+	"loadbootscriptfat=fatload mmc ${mmcdev}:${mmcpart} ${script_addr} ${script};\0"            \
+	"loadbootscript   =fatload mmc ${mmcdev}:${mmcpart} ${script_addr} ${script};\0"            \
+	"loadbootscriptandroid=fatload mmc ${mmcdev}:${partfdtandroid} ${script_addr} ${script};\0" \
+	"loadbootscriptfatusb=fatload usb ${usbdev}:${usbpart} ${script_addr} ${script};\0"         \
+	"bootscript=echo Running bootscript...; source ${script_addr}\0"                            \
+	"loadimageext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${loadaddr} ${image}\0"                \
+	"loadimagefat=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0"                      \
+	"loadandroid=boota  mmc${mmcdev}\0"                                                         \
+	"loadfdtfat=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0"                     \
+	"loadfdtext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${fdt_addr} ${fdt_file}\0"               \
+	"loadfdtandroid=fatload mmc ${mmcdev}:${partfdtandroid} ${fdt_addr} ${fdt_file}\0"          \
+	"loadfdt=echo loading fdt..;"                                                               \
+            "if run loadfdtext4; then echo loadtdext4 ok; else echo trying from fat....; "          \
+            "if run loadfdtfat;  then echo loadftdfat ok; fi; fi;\0"                                \
 	"mmcboot=echo Booting from mmc ...; " \
 		"run mmcargs; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
@@ -210,17 +234,37 @@
 			"booti; " \
 		"fi;\0"
 
-#define CONFIG_BOOTCOMMAND \
-	   "mmc dev ${mmcdev}; if mmc rescan; then " \
-		   "if run loadbootscript; then " \
-			   "run bootscript; " \
-		   "else " \
-			   "if run loadimage; then " \
-				   "run mmcboot; " \
-			   "else run netboot; " \
-			   "fi; " \
-		   "fi; " \
-	   "else booti ${loadaddr} - ${fdt_addr}; fi"
+#define CONFIG_BOOTCOMMAND                                \
+	   "mmc dev ${mmcdev}; "                          \
+           "if mmc rescan; then "                         \
+	     "if run loadbootscriptext4; then "           \
+		"run bootscript; "                        \
+	     "else "                                      \
+	       "if run loadbootscriptfat; then "          \
+	          "run bootscript; "                      \
+	       "else "                                    \
+ 	          "if run loadbootscriptfatandroid; then "\
+	             "run bootscript; "		          \
+	          "else "                                 \
+		    "if run loadimageext4; then "         \
+		       "run mmcboot; "                    \
+                    "else "                               \
+                      "if run loadimagefat then "         \
+		         "run mmcboot; "                  \
+                      "else "                             \
+                           "mw.b $fdt_addr 0 0x40;"       \
+                           "run loadfdtandroid;"          \
+	                   "if  run loadandroid; then"    \
+	                       ";"		          \
+		           "else run netboot; "           \
+                           "fi;"                          \
+		      "fi; "                              \
+		    "fi; "                                \
+		  "fi; "                                  \
+	       "fi; "                                     \
+	     "fi; "                                       \
+	   "else booti ${loadaddr} - ${fdt_addr}; "       \
+           "fi"
 #endif
 
 /* Link Definitions */
@@ -229,7 +273,7 @@
 #define CONFIG_SYS_LOAD_ADDR           CONFIG_LOADADDR
 
 #define CONFIG_SYS_INIT_RAM_ADDR        0x40000000
-#define CONFIG_SYS_INIT_RAM_SIZE        0x80000
+#define CONFIG_SYS_INIT_RAM_SIZE        0x00080000
 #define CONFIG_SYS_INIT_SP_OFFSET \
         (CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_ADDR \
