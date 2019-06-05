@@ -117,9 +117,8 @@
 
 
 #define CONFIG_LOADADDR			0x40480000
-
-#define CONFIG_SYS_LOAD_ADDR             CONFIG_LOADADDR
-#define SCRIPT_ADDR                      (CONFIG_LOADADDR-0x80000)
+#define CONFIG_SYS_LOAD_ADDR            CONFIG_LOADADDR
+#define SCRIPT_ADDR                     0x40400000
 
 
 /*
@@ -169,28 +168,28 @@
 	"script=boot.scr\0" \
 	"image=Image\0" \
 	"console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200\0" \
-	"fdt_addr=0x43000000\0"			\
-    "script_addr=" __stringify(SCRIPT_ADDR) "\0"  \
-	"fdt_high=0xffffffffffffffff\0"		\
-	"boot_fdt=try\0" \
-	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
-	"initrd_addr=0x43800000\0"		\
-	"initrd_high=0xffffffffffffffff\0" \
+	"fdt_addr=0x43000000\0"			    \
+        "script_addr="__stringify(SCRIPT_ADDR)"\0"  \
+	"fdt_high=0xffffffffffffffff\0"	            \
+	"boot_fdt=try\0"                            \
+	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0"    \
+	"initrd_addr=0x43800000\0"		    \
+	"initrd_high=0xffffffffffffffff\0"          \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
-	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
-	"partfdtandroid=8\0" \
-	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
-	"mmcpartext4=1\0" \
-	"mmcautodetect=yes\0" \
-        "bootsector=66\0"     \
-	"brickme_sd=mmc erase $bootsector 10\0" \
+	"mmcpart="__stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
+	"partfdtandroid=8\0"                        \
+	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0"  \
+	"mmcpartext4=1\0"                           \
+	"mmcautodetect=yes\0"                       \
+        "bootsector=66\0"                           \
+	"brickme_sd=mmc erase $bootsector 10\0"     \
         "brickme_mmc=mmc partconf 0 1 0 1 ; mmc erase $bootsector 10 ;mmc partconf 0 1 1 1 ; mmc erase $bootsector 10 ;mmc partconf 0 0 0 0 ; mmc erase $bootsector 10 \0" \
 	"update_bl=mmc partconf 0 0 0 0 ; ums 0 mmc 0 \0"	                                    \
 	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 "                   \
 	"loadbootscriptext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${script_addr} ${script};\0"      \
 	"loadbootscriptfat=fatload mmc ${mmcdev}:${mmcpart} ${script_addr} ${script};\0"            \
 	"loadbootscript   =fatload mmc ${mmcdev}:${mmcpart} ${script_addr} ${script};\0"            \
-	"loadbootscriptandroid=fatload mmc ${mmcdev}:${partfdtandroid} ${script_addr} ${script};\0" \
+	"loadbootscriptfatandroid=fatload mmc ${mmcdev}:${partfdtandroid} ${script_addr} ${script};\0" \
 	"loadbootscriptfatusb=fatload usb ${usbdev}:${usbpart} ${script_addr} ${script};\0"         \
 	"bootscript=echo Running bootscript...; source ${script_addr}\0"                            \
 	"loadimageext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${loadaddr} ${image}\0"                \
@@ -234,37 +233,23 @@
 			"booti; " \
 		"fi;\0"
 
-#define CONFIG_BOOTCOMMAND                                \
-	   "mmc dev ${mmcdev}; "                          \
-           "if mmc rescan; then "                         \
-	     "if run loadbootscriptext4; then "           \
-		"run bootscript; "                        \
-	     "else "                                      \
-	       "if run loadbootscriptfat; then "          \
-	          "run bootscript; "                      \
-	       "else "                                    \
- 	          "if run loadbootscriptfatandroid; then "\
-	             "run bootscript; "		          \
-	          "else "                                 \
-		    "if run loadimageext4; then "         \
-		       "run mmcboot; "                    \
-                    "else "                               \
-                      "if run loadimagefat then "         \
-		         "run mmcboot; "                  \
-                      "else "                             \
-                           "mw.b $fdt_addr 0 0x40;"       \
-                           "run loadfdtandroid;"          \
-	                   "if  run loadandroid; then"    \
-	                       ";"		          \
-		           "else run netboot; "           \
-                           "fi;"                          \
-		      "fi; "                              \
-		    "fi; "                                \
-		  "fi; "                                  \
-	       "fi; "                                     \
-	     "fi; "                                       \
-	   "else booti ${loadaddr} - ${fdt_addr}; "       \
-           "fi"
+#define CONFIG_BOOTCOMMAND \
+	"mmc dev ${mmcdev}; if mmc rescan; "\
+        "then "\
+	     "if              run loadbootscriptext4;       then run bootscript; "    \
+	     "else if         run loadbootscriptfat;        then run bootscript; "    \
+	       "else if       run loadbootscriptfatandroid; then run bootscript; "    \
+	         "else if     run loadimageext4;            then run mmcboot; "       \
+                   "else if   run loadimagefat;             then run mmcboot; "       \
+                     "else    mw.b $fdt_addr 0 0x40;             run loadfdtandroid; "\
+	                  "if  run loadandroid; then  ;     else run netboot; "       \
+                          "fi; "\
+		     "fi; "    \
+		   "fi; "      \
+		 "fi; "        \
+	       "fi; "          \
+	     "fi; "	       \
+	"else booti ${loadaddr} - ${fdt_addr}; fi "
 #endif
 
 /* Link Definitions */
