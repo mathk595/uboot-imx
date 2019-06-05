@@ -521,6 +521,38 @@ static int do_mmc_list(cmd_tbl_t *cmdtp, int flag,
 	return CMD_RET_SUCCESS;
 }
 
+static int do_mmc_erase_env(cmd_tbl_t *cmdtp, int flag,
+		       int argc, char * const argv[])
+{
+
+	struct mmc *mmc;
+	u32 blk, cnt, n;
+
+	blk = CONFIG_ENV_OFFSET/512;
+	cnt = CONFIG_ENV_SIZE/512; 
+
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	printf("\nMMC erase: dev # %d, block # %d, count %d ... ",
+	       curr_device, blk, cnt);
+
+	if (mmc_getwp(mmc) == 1) {
+		printf("Error: card is write protected!\n");
+		return CMD_RET_FAILURE;
+	}
+#ifndef CONFIG_BLK
+	n = mmc->block_dev.block_erase(curr_device, blk, cnt);
+#else
+	n =  blk_derase(mmc_get_blk_desc(mmc), blk, cnt);
+#endif
+	printf("%d blocks erased: %s\n", n, (n == cnt) ? "OK" : "ERROR");
+
+	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
+}
+
+
 #if CONFIG_IS_ENABLED(MMC_HW_PARTITIONING)
 static int parse_hwpart_user(struct mmc_hwpart_conf *pconf,
 			     int argc, char * const argv[])
@@ -753,6 +785,26 @@ static int mmc_partconf_print(struct mmc *mmc)
 	return CMD_RET_SUCCESS;
 }
 
+int mmc_read_partconf(struct mmc *mmc, int *ack, int *access, int *part)
+{
+	if (mmc->part_config == MMCPART_NOAVAILABLE) {
+		printf("No part_config info for ver. 0x%x\n", mmc->version);
+		return CMD_RET_FAILURE;
+	}
+
+	*access = EXT_CSD_EXTRACT_PARTITION_ACCESS(mmc->part_config);
+	*ack    = EXT_CSD_EXTRACT_BOOT_ACK(mmc->part_config);
+	*part   = EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config);
+
+	printf("EXT_CSD[179], PARTITION_CONFIG:\n"
+		"BOOT_ACK: 0x%x\n"
+		"BOOT_PARTITION_ENABLE: 0x%x\n"
+		"PARTITION_ACCESS: 0x%x\n", *ack, *part, *access);
+
+	return CMD_RET_SUCCESS;
+}
+		      
+
 static int do_mmc_partconf(cmd_tbl_t *cmdtp, int flag,
 			   int argc, char * const argv[])
 {
@@ -847,6 +899,82 @@ static int do_mmc_setdsr(cmd_tbl_t *cmdtp, int flag,
 	return ret;
 }
 
+static int do_mmc_rawcpy(cmd_tbl_t *cmdtp, int flag,
+			 int argc, char * const argv[])
+{
+  struct mmc *mmc1, *mmc2;
+  u32 srcdev,dstdev,blks,blkd,cnt, n;
+  void *addr;
+  
+  if (argc != 6)
+    return CMD_RET_USAGE;
+
+  addr    = (void *)0x100000;  // 1M
+  srcdev  = simple_strtoul(argv[1], NULL, 10);
+  dstdev  = simple_strtoul(argv[2], NULL, 10);
+  blks    = simple_strtoul(argv[3], NULL, 10);
+  blkd    = simple_strtoul(argv[4], NULL, 10);
+  cnt     = simple_strtoul(argv[5], NULL, 10);
+
+  mmc1    = init_mmc_device(srcdev, true);
+
+  if (!mmc1)
+    return CMD_RET_FAILURE;
+
+  mmc2    = init_mmc_device(dstdev, true);
+  if (!mmc2)
+    return CMD_RET_FAILURE;
+  
+  if (mmc_getwp(mmc2) == 1) {
+      printf("Error: Destination card is write protected!\n");
+      return CMD_RET_FAILURE;
+  }
+  printf("\nMMC Rawcpy: dev:%d->%d blk:%d cnt %d -> blk:%d\n", srcdev,dstdev,blks,cnt,blkd);
+
+  n=0;  
+  while( n < cnt )
+  {
+    int hr, tbr;
+    tbr = (cnt-n);
+    if( tbr > 32 ) tbr = 32;
+    
+    //    mmc1  = init_mmc_device(srcdev, true);
+    // if (!mmc1)   return CMD_RET_FAILURE;
+    printf("\nMMC read:  dev # %d, block # %d, cnt %d ... ",  srcdev, blks, tbr);
+#ifndef CONFIG_BLK
+    hr = mmc1->block_dev.block_read(srcdev, blks, tbr, addr);
+#else
+    hr = blk_dread(mmc_get_blk_desc(mmc1), blks, tbr, addr);
+#endif
+    if( hr != tbr )
+    {      
+      printf("\nMMC %d read: Failed\n",  srcdev);
+      return CMD_RET_FAILURE;
+    }    
+    /* flush cache after read */
+    flush_cache((ulong)addr, tbr * 512); /* FIXME */
+    //   mmc2  = init_mmc_device(dstdev, true);
+    //   if (!mmc2)   return CMD_RET_FAILURE;
+
+    printf("\nMMC write: dev # %d, block # %d, cnt %d ... ", dstdev, blkd, tbr);
+#ifndef CONFIG_BLK
+    hr = mmc2->block_dev.block_write(dstdev, blkd, tbr, addr);
+#else
+    hr = blk_dwrite(mmc_get_blk_desc(mmc2), blkd, tbr, addr);
+#endif
+    if( hr != tbr )
+    {      
+      printf("\nMMC %d write: Failed\n",  srcdev);
+      return CMD_RET_FAILURE;
+    }    
+    blks += tbr;
+    blkd += tbr;
+    n    += tbr;    
+  }
+  printf("\nMMC Rawcpy: Done\n");  
+  return CMD_RET_SUCCESS;
+}
+
 #ifdef CONFIG_CMD_BKOPS_ENABLE
 static int do_mmc_bkops_enable(cmd_tbl_t *cmdtp, int flag,
 				   int argc, char * const argv[])
@@ -877,7 +1005,10 @@ static cmd_tbl_t cmd_mmc[] = {
 	U_BOOT_CMD_MKENT(read, 4, 1, do_mmc_read, "", ""),
 #if CONFIG_IS_ENABLED(MMC_WRITE)
 	U_BOOT_CMD_MKENT(write, 4, 0, do_mmc_write, "", ""),
+	U_BOOT_CMD_MKENT(rawcpy, 6, 0, do_mmc_rawcpy, "", ""),
+	U_BOOT_CMD_MKENT(env_erase, 1, 0, do_mmc_erase_env, "", ""),
 	U_BOOT_CMD_MKENT(erase, 3, 0, do_mmc_erase, "", ""),
+
 #endif
 #if CONFIG_IS_ENABLED(CMD_MMC_SWRITE)
 	U_BOOT_CMD_MKENT(swrite, 3, 0, do_mmc_sparse_write, "", ""),
@@ -939,6 +1070,8 @@ U_BOOT_CMD(
 #if CONFIG_IS_ENABLED(CMD_MMC_SWRITE)
 	"mmc swrite addr blk#\n"
 #endif
+	"mmc rawcpy  srcdev dstdev srcblk destblk cnt\n"
+	"mmc env_erase - erase persistant environment saved by bootloader\n"
 	"mmc erase blk# cnt\n"
 	"mmc rescan\n"
 	"mmc part - lists available partition on current mmc device\n"
