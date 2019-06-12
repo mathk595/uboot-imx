@@ -180,6 +180,7 @@
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"mmcpart="__stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
 	"partfdtandroid=8\0"                        \
+	"ethspeed=100M\0"			    \
 	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0"  \
 	"mmcpartext4=1\0"                           \
 	"mmcautodetect=yes\0"                       \
