@@ -38,6 +38,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define UART_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_FSEL1)
 #define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
+#define GPIO_PAD_CTRL   (PAD_CTL_DSE6 )
 
 static iomux_v3_cfg_t const uart_pads[] = {
 	IMX8MM_PAD_UART1_RXD_UART1_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
@@ -92,53 +93,156 @@ int ft_board_setup(void *blob, bd_t *bd)
 #endif
 
 #ifdef CONFIG_FEC_MXC
-#define FEC_RST_PAD IMX_GPIO_NR(4, 22)
+
+static iomux_v3_cfg_t const fec1_nrst_pads[] = {
+	IMX8MM_PAD_ENET_RX_CTL_ENET1_RGMII_RX_CTL | MUX_PAD_CTRL(0x91),
+	IMX8MM_PAD_ENET_RD2_ENET1_RGMII_RD2       | MUX_PAD_CTRL(0x91),
+	IMX8MM_PAD_ENET_RXC_ENET1_RGMII_RXC       | MUX_PAD_CTRL(0x91),
+	IMX8MM_PAD_ENET_RD3_ENET1_RGMII_RD3       | MUX_PAD_CTRL(0x91),
+};
+
+#define FEC_RST_PAD IMX_GPIO_NR(1, 9)
+#define FEC_MODE0   IMX_GPIO_NR(1,24)
+#define FEC_MODE1   IMX_GPIO_NR(1,28)
+#define FEC_MODE2   IMX_GPIO_NR(1,25)
+#define FEC_MODE3   IMX_GPIO_NR(1,29)
+
 static iomux_v3_cfg_t const fec1_rst_pads[] = {
-	IMX8MM_PAD_GPIO1_IO09_GPIO1_IO9 | MUX_PAD_CTRL(NO_PAD_CTRL),
+        IMX8MM_PAD_GPIO1_IO09_GPIO1_IO9           | MUX_PAD_CTRL(NO_PAD_CTRL),
+	IMX8MM_PAD_ENET_RX_CTL_GPIO1_IO24         | MUX_PAD_CTRL(NO_PAD_CTRL),
+	IMX8MM_PAD_ENET_RD2_GPIO1_IO28            | MUX_PAD_CTRL(NO_PAD_CTRL),
+	IMX8MM_PAD_ENET_RXC_GPIO1_IO25            | MUX_PAD_CTRL(NO_PAD_CTRL),
+	IMX8MM_PAD_ENET_RD3_GPIO1_IO29            | MUX_PAD_CTRL(NO_PAD_CTRL),
+	/*
+
+	IMX8MM_PAD_ENET_MDC_ENET1_MDC	          | MUX_PAD_CTRL(	0x03),
+	IMX8MM_PAD_ENET_MDIO_ENET1_MDIO           | MUX_PAD_CTRL(	0x03),
+	IMX8MM_PAD_ENET_TD3_ENET1_RGMII_TD3       | MUX_PAD_CTRL(	0x1f),
+	IMX8MM_PAD_ENET_TD2_ENET1_RGMII_TD2       | MUX_PAD_CTRL(	0x1f),
+	IMX8MM_PAD_ENET_TD1_ENET1_RGMII_TD1       | MUX_PAD_CTRL(	0x1f),
+	IMX8MM_PAD_ENET_TD0_ENET1_RGMII_TD0       | MUX_PAD_CTRL(	0x1f),
+	IMX8MM_PAD_ENET_RD3_ENET1_RGMII_RD3       | MUX_PAD_CTRL(	0x91),
+	IMX8MM_PAD_ENET_RD2_ENET1_RGMII_RD2       | MUX_PAD_CTRL(	0x91),
+	IMX8MM_PAD_ENET_RD1_ENET1_RGMII_RD1       | MUX_PAD_CTRL(	0x91),
+	IMX8MM_PAD_ENET_RD0_ENET1_RGMII_RD0       | MUX_PAD_CTRL(	0x91),
+	IMX8MM_PAD_ENET_TXC_ENET1_RGMII_TXC       | MUX_PAD_CTRL(	0x1f),
+	IMX8MM_PAD_ENET_RXC_ENET1_RGMII_RXC       | MUX_PAD_CTRL(	0x91),
+	IMX8MM_PAD_ENET_RX_CTL_ENET1_RGMII_RX_CTL | MUX_PAD_CTRL(	0x91),
+	IMX8MM_PAD_ENET_TX_CTL_ENET1_RGMII_TX_CTL | MUX_PAD_CTRL(	0x1f),
+	*/
 };
 
 static void setup_iomux_fec(void)
 {
-	imx_iomux_v3_setup_multiple_pads(fec1_rst_pads,
-					 ARRAY_SIZE(fec1_rst_pads));
 
+	printf("%s: reset fec\n", __func__);
+	imx_iomux_v3_setup_multiple_pads(fec1_rst_pads, ARRAY_SIZE(fec1_rst_pads));
+#if 1
+	gpio_request(FEC_MODE0,"fec_mode0");	gpio_direction_output(FEC_MODE0, 0);
+	gpio_request(FEC_MODE1,"fec_mode1");	gpio_direction_output(FEC_MODE1, 0);
+	gpio_request(FEC_MODE2,"fec_mode2");	gpio_direction_output(FEC_MODE2, 0);
+	gpio_request(FEC_MODE3,"fec_mode3");	gpio_direction_output(FEC_MODE3, 0);
+#endif
 	gpio_request(FEC_RST_PAD, "fec1_rst");
 	gpio_direction_output(FEC_RST_PAD, 0);
 	udelay(500);
 	gpio_direction_output(FEC_RST_PAD, 1);
+#if 1
+	udelay(1000);
+	gpio_direction_output(FEC_RST_PAD, 0);
+	udelay(1000);
+	gpio_direction_output(FEC_RST_PAD, 1);
+#endif
+	imx_iomux_v3_setup_multiple_pads(fec1_nrst_pads, ARRAY_SIZE(fec1_nrst_pads));
+
+
 }
 
 static int setup_fec(void)
 {
 	struct iomuxc_gpr_base_regs *const iomuxc_gpr_regs
 		= (struct iomuxc_gpr_base_regs *) IOMUXC_GPR_BASE_ADDR;
-
-	setup_iomux_fec();
-
 	/* Use 125M anatop REF_CLK1 for ENET1, not from external */
-	clrsetbits_le32(&iomuxc_gpr_regs->gpr[1],
-			IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_SHIFT, 0);
-	return set_clk_enet(ENET_125MHZ);
+	setup_iomux_fec();
+	printf("%s: Enable FEC CLK\n", __func__);
+	clrsetbits_le32(&iomuxc_gpr_regs->gpr[1],IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_SHIFT, 0);
+	set_clk_enet(ENET_125MHZ);
+	return 0;
 }
+
+#undef  MDIO_DEVAD_NONE
+#define MDIO_DEVAD_NONE 4
+
+int ethernet_1GB(void)
+{
+  char *s;
+  int i;  
+  s = env_get("ethspeed");
+  i = strncmp(s,"1G", 2);
+  if( i == 0 )
+  {
+      printf("ethspeed=1Gb\n");
+      return(1);
+  }else
+  {
+      printf("ethspeed=100Mb\n");
+      return(0);
+  }  
+}
+  
+
+void board_phy_dump(struct phy_device *phydev)
+{
+  int i;
+  printf("------------------%s-----------------------\n", __func__);
+  
+  for(i=0; i < 0x1F; i++ )
+    printf("Phy Adr: 0x%02x -> 0x%02x\n", i, phy_read(phydev, MDIO_DEVAD_NONE, i));
+  
+}
+ 
 
 int board_phy_config(struct phy_device *phydev)
 {
-	/* enable rgmii rxc skew and phy mode select to RGMII copper */
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x1f);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x8);
+  int i=100;
+  
+  /* enable rgmii rxc skew and phy mode select to RGMII copper */
+#if 0
+  // Reset Phy....
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x0, 0x8000);
+  while( i-- && ((phy_read(phydev, MDIO_DEVAD_NONE, 0x00) & 0x8000)!=0))
+    udelay(1000);
+#endif
 
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x00);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x82ee);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x05);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x100);
+  if (phydev->drv->config)
+    phydev->drv->config(phydev);
 
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
-	return 0;
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x1F, 0x8040);
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x1f);
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x02);  
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x00);
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x82ee);
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x05);
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x100);
+
+  if( ethernet_1GB() == 0 )
+    phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x000);    // Do not use 1GBit 
+  else
+    phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x300);    // use 1GBit 
+ 
+  i = phy_read(phydev, MDIO_DEVAD_NONE, 0x14);
+  i &= ~0x1C;
+  i |=  0x04;
+  i &= ~0x02;
+  printf("%s: Phy Write 0x14 0x%02x \n", __func__, i);
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x14, i);  
+  
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x0,  0x3200);   // 100MBit restart AN
+  return(0);  
 }
 #endif
 
-
+  
 int board_init(void)
 {
 
