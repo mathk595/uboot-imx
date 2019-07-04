@@ -45,6 +45,14 @@ static iomux_v3_cfg_t const uart_pads[] = {
 	IMX8MM_PAD_UART1_TXD_UART1_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
+#define USBH_PWR_GPIO IMX_GPIO_NR(1,14)  
+#define OTG_PWR_GPIO  IMX_GPIO_NR(1,12)  
+  
+static iomux_v3_cfg_t const usb_pads[] = {
+	IMX8MM_PAD_GPIO1_IO14_GPIO1_IO14 | MUX_PAD_CTRL(GPIO_PAD_CTRL),
+	IMX8MM_PAD_GPIO1_IO12_GPIO1_IO12 | MUX_PAD_CTRL(GPIO_PAD_CTRL),	
+};
+
 #if TRIZEPS8_USE_RESET_OUT_AS_WATCHDOG_OUT
 static iomux_v3_cfg_t const wdog_pads[] = {
 	IMX8MM_PAD_GPIO1_IO02_WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
@@ -61,8 +69,8 @@ int board_early_init_f(void)
 	set_wdog_reset(wdog);
 #endif
 
+	imx_iomux_v3_setup_multiple_pads(usb_pads, ARRAY_SIZE(usb_pads));
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
-
 	return 0;
 }
 
@@ -271,6 +279,45 @@ int board_late_init(void)
 #endif
 
 	return 0;
+}
+
+int board_ehci_usb_phy_mode(struct udevice *dev)
+{
+	if (dev->seq == 0)
+	{
+	  printf("%s: USB_INIT_DEVICE\n", __func__);
+	  return USB_INIT_DEVICE;
+	}else
+	{	
+	  printf("%s: USB_INIT_HOST\n", __func__);
+	  return USB_INIT_HOST;
+	}
+}
+
+int board_usb_init(int index, enum usb_init_type init)
+{
+	imx8m_usb_power(index, true);
+	gpio_request( OTG_PWR_GPIO, "otgpwr");
+	gpio_direction_output(  OTG_PWR_GPIO, 0);
+	gpio_free( OTG_PWR_GPIO);
+
+	gpio_request(USBH_PWR_GPIO, "usbhpwr");
+	gpio_direction_output( USBH_PWR_GPIO, 0);
+	gpio_free( USBH_PWR_GPIO);
+	return(0);
+}
+
+int board_usb_cleanup(int index, enum usb_init_type init)
+{
+	imx8m_usb_power(index, false);
+	gpio_request( OTG_PWR_GPIO, "otgpwr");
+	gpio_direction_output(  OTG_PWR_GPIO, 1);
+	gpio_free( OTG_PWR_GPIO);
+
+	gpio_request(USBH_PWR_GPIO, "usbhpwr");
+	gpio_direction_output( USBH_PWR_GPIO, 1);
+	gpio_free( USBH_PWR_GPIO);
+	return(0);
 }
 
 #ifdef CONFIG_FSL_FASTBOOT
