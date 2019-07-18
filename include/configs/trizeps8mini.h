@@ -4,6 +4,11 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#if 0
+#define DEBUG 1
+#define CONFIG_SYS_DCACHE_OFF
+#endif
+
 #ifndef __IMX8MM_TRIZEPS8MINI_H
 #define __IMX8MM_TRIZEPS8MINI_H
 
@@ -168,7 +173,8 @@
 	CONFIG_MFG_ENV_SETTINGS \
 	JAILHOUSE_ENV \
 	"script=boot.scr\0" \
-	"image=Image\0" \
+	"splashpos=m,m\0"			   \
+	"image=Image\0"                            \
 	"console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200\0" \
 	"fdt_addr=0x43000000\0"			    \
         "script_addr="__stringify(SCRIPT_ADDR)"\0"  \
@@ -188,6 +194,7 @@
 	"brickme_sd=mmc erase $bootsector 10\0"     \
         "brickme_mmc=mmc partconf 0 1 0 1 ; mmc erase $bootsector 10 ;mmc partconf 0 1 1 1 ; mmc erase $bootsector 10 ;mmc partconf 0 0 0 0 ; mmc erase $bootsector 10 \0" \
 	"update_bl=mmc partconf 0 0 0 0 ; ums 0 mmc 0 \0"	                                    \
+        "serial_download=i2c dev 2; i2c mw 0x10 2.1 2 \0"                                           \
 	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 "                   \
 	"loadbootscriptext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${script_addr} ${script};\0"      \
 	"loadbootscriptfat=fatload mmc ${mmcdev}:${mmcpart} ${script_addr} ${script};\0"            \
@@ -280,7 +287,7 @@
 #elif defined(CONFIG_ENV_IS_IN_NAND)
 #define CONFIG_ENV_OFFSET       (60 << 20)
 #endif
-#define CONFIG_ENV_SIZE			0x1000
+#define CONFIG_ENV_SIZE			0x2000
 #define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2 */
 #define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
 
@@ -422,8 +429,97 @@
 #endif
 
 #define CONFIG_OF_SYSTEM_SETUP
+#define IS_TRIZEPS8_MINI
 
 #if defined(CONFIG_ANDROID_SUPPORT)
-#include "imx8mm_evk_android.h"
+#define IMX8MM_EVK_ANDROID_H
+
+#define CONFIG_BCB_SUPPORT
+
+#define CONFIG_ANDROID_AB_SUPPORT
+#define CONFIG_AVB_SUPPORT
+#define CONFIG_SUPPORT_EMMC_RPMB
+#define CONFIG_SYSTEM_RAMDISK_SUPPORT
+#define CONFIG_AVB_FUSE_BANK_SIZEW 0
+#define CONFIG_AVB_FUSE_BANK_START 0
+#define CONFIG_AVB_FUSE_BANK_END 0
+#define CONFIG_FASTBOOT_LOCK
+#define FSL_FASTBOOT_FB_DEV "mmc"
+
+#ifdef CONFIG_SYS_MALLOC_LEN
+#undef CONFIG_SYS_MALLOC_LEN
+#define CONFIG_SYS_MALLOC_LEN           (96 * SZ_1M)
+#endif
+
+#ifndef CONFIG_USB_FUNCTION_FASTBOOT
+#define CONFIG_USB_FUNCTION_FASTBOOT
+#endif
+
+#ifndef CONFIG_CMD_FASTBOOT
+#define CONFIG_CMD_FASTBOOT
+#endif
+
+#ifndef CONFIG_ANDROID_BOOT_IMAGE
+#define CONFIG_ANDROID_BOOT_IMAGE
+#endif
+
+#ifndef CONFIG_FASTBOOT_FLASH
+#define CONFIG_FASTBOOT_FLASH
+#endif
+
+#ifndef CONFIG_FASTBOOT_STORAGE_MMC
+#define CONFIG_FASTBOOT_STORAGE_MMC
+#endif
+
+#ifndef CONFIG_FSL_FASTBOOT
+#define CONFIG_FSL_FASTBOOT
+#endif
+
+#define CONFIG_ANDROID_RECOVERY
+
+#ifndef CONFIG_FASTBOOT_BUF_ADDR
+#define CONFIG_FASTBOOT_BUF_ADDR   CONFIG_SYS_LOAD_ADDR
+#else
+#warning("CONFIG_FASTBOOT_BUF_ADDR already set");
+#endif
+
+#ifndef CONFIG_FASTBOOT_BUF_SIZE
+#define CONFIG_FASTBOOT_BUF_SIZE   0x19000000
+#else
+#warning("CONFIG_FASTBOOT_BUF_SIZE already set");
+#endif
+
+#define CONFIG_CMD_BOOTA
+#define CONFIG_SUPPORT_RAW_INITRD
+#define CONFIG_SERIAL_TAG
+
+/* #undef CONFIG_EXTRA_ENV_SETTINGS */
+#undef CONFIG_BOOTCOMMAND
+
+
+/* Enable mcu firmware flash */
+#ifdef CONFIG_FLASH_MCUFIRMWARE_SUPPORT
+#define ANDROID_MCU_FRIMWARE_DEV_TYPE DEV_MMC
+#define ANDROID_MCU_FIRMWARE_START 0x500000
+#define ANDROID_MCU_FIRMWARE_SIZE  0x40000
+#define ANDROID_MCU_FIRMWARE_HEADER_STACK 0x20020000
+#endif
+
+#ifdef CONFIG_FSL_CAAM_KB
+#undef CONFIG_FSL_CAAM_KB
+#endif
+#define AVB_AB_I_UNDERSTAND_LIBAVB_AB_IS_DEPRECATED
+
+#ifdef CONFIG_IMX_TRUSTY_OS
+#define AVB_RPMB
+#define KEYSLOT_HWPARTITION_ID 2
+#define KEYSLOT_BLKS             0x1FFF
+#define NS_ARCH_ARM64 1
+
+#ifdef CONFIG_SPL_BUILD
+#undef CONFIG_BLK
+#endif
+#endif
+
 #endif
 #endif
