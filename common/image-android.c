@@ -5,7 +5,7 @@
  * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
  * Copyright 2017 NXP
  */
-
+#define DEBUG 1
 #include <common.h>
 #include <image.h>
 #include <android_image.h>
@@ -37,8 +37,11 @@ static ulong android_image_get_kernel_addr(const struct andr_img_hdr *hdr)
 	 * Otherwise, we will return the actual value set by the user.
 	 */
 	if (hdr->kernel_addr == ANDROID_IMAGE_DEFAULT_KERNEL_ADDR)
-		return (ulong)hdr + hdr->page_size;
-
+	{
+    	  printf("android_image_get_kernel_addr: ANDROID_IMAGE_DEFAULT_KERNEL_ADDR 0x%lx\n", (ulong)hdr + hdr->page_size);	  
+	  return (ulong)hdr + hdr->page_size;
+	}
+	printf("android_image_get_kernel_addr: 0x%lx\n", (ulong)hdr->kernel_addr);	  	
 	return hdr->kernel_addr;
 }
 
