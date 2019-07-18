@@ -10,6 +10,8 @@
 
 #define NUM_GUIDS 2
 
+ulong DisableVerityModeGlobal=0;
+
 /* Substitutes all variables (e.g. $(ANDROID_SYSTEM_PARTUUID)) with
  * values. Returns NULL on OOM, otherwise the cmdline with values
  * replaced.
@@ -296,13 +298,18 @@ AvbSlotVerifyResult avb_append_options(
       break;
   }
 
+  DisableVerityModeGlobal=env_get_ulong("disable_dm_verity", 10,0);
+  
   /* Set androidboot.veritymode and androidboot.vbmeta.invalidate_on_error */
-  if (toplevel_vbmeta->flags & AVB_VBMETA_IMAGE_FLAGS_HASHTREE_DISABLED) {
+  if ((toplevel_vbmeta->flags & AVB_VBMETA_IMAGE_FLAGS_HASHTREE_DISABLED)) {
     verity_mode = "disabled";
   } else {
     const char* dm_verity_mode = NULL;
     char* new_ret;
 
+    if( DisableVerityModeGlobal )
+      hashtree_error_mode = AVB_HASHTREE_ERROR_MODE_LOGGING;
+    
     switch (hashtree_error_mode) {
       case AVB_HASHTREE_ERROR_MODE_RESTART_AND_INVALIDATE:
         if (!cmdline_append_option(
