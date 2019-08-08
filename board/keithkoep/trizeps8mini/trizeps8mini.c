@@ -45,6 +45,32 @@ static iomux_v3_cfg_t const uart_pads[] = {
 	IMX8MM_PAD_UART1_TXD_UART1_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
+#define PCIE_WL_POWERDOWN       IMX_GPIO_NR(3, 5)
+#define PCIE_W_DISABLE_GPIO     IMX_GPIO_NR(3,17)
+#define PCIE_RESET              IMX_GPIO_NR(2,19)
+#define PCIE_WAKE               IMX_GPIO_NR(3, 2)
+
+#define PCIE_W_DISABLE_GPIO_EXT IMX_GPIO_NR(4,15)  
+#define PCIE_RESET_EXT          IMX_GPIO_NR(4,17)
+#define PCIE_WAKE_EXT           IMX_GPIO_NR(3,13)  
+
+  
+static iomux_v3_cfg_t const pcie_wifi_pads[] = {
+        IMX8MM_PAD_I2C4_SCL_PCIE1_CLKREQ_B  | MUX_PAD_CTRL(0x61),          // CLKREQ_B
+	IMX8MM_PAD_NAND_WE_B_GPIO3_IO17     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_W_DISABLE_GPIO
+	IMX8MM_PAD_SD2_RESET_B_GPIO2_IO19   | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_RESET
+	IMX8MM_PAD_NAND_CLE_GPIO3_IO5       | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_WL_POWERDOWN
+	IMX8MM_PAD_NAND_CE1_B_GPIO3_IO2     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_WAKE
+};
+
+static iomux_v3_cfg_t const pcie_ext_pads[] = {
+        IMX8MM_PAD_I2C4_SCL_PCIE1_CLKREQ_B  | MUX_PAD_CTRL(0x61),          // CLKREQ_B
+	IMX8MM_PAD_SAI1_TXD3_GPIO4_IO15     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_W_DISABLE_GPIO
+	IMX8MM_PAD_SAI1_TXD5_GPIO4_IO17     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_RESET
+	IMX8MM_PAD_NAND_CLE_GPIO3_IO5       | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_WL_POWERDOWN
+	IMX8MM_PAD_NAND_DATA07_GPIO3_IO13   | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_WAKE
+};
+
 #define USBH_PWR_GPIO IMX_GPIO_NR(1,14)  
 #define OTG_PWR_GPIO  IMX_GPIO_NR(1,12)  
   
@@ -250,6 +276,70 @@ int board_phy_config(struct phy_device *phydev)
 }
 #endif
 
+#define GPC_IPS_BASE_ADDR 0x303A0000
+void pci_clk_enable(void);
+void mx8qxp_pcie_init(void);
+void mx8qm_pcie_init(void);
+
+static void setup_pcie(void)
+{
+         char *s;
+	 int  internal_wifi=0, pcie_ext=0;
+
+	 s = env_get("pcie");
+	 if( s )
+	 {	     
+	   internal_wifi = (strncmp(s,"wifionboard", 2) == 0) ? 1:0;
+	   pcie_ext      = (strncmp(s,"extern",      2) == 0) ? 1:0;
+	   printk("%s: Environment pcie=%s ", __func__, s);
+	 }else
+	   printk("%s: Environment variable pcie not set. Skip Init PCIe gpios\n", __func__);	   
+
+	 if( internal_wifi )
+	 {
+	   printk("> Setup PCIe Gpios for onboard Wifi Card\n");	   
+	   imx_iomux_v3_setup_multiple_pads(pcie_wifi_pads, ARRAY_SIZE(pcie_wifi_pads));
+	   gpio_request(PCIE_WL_POWERDOWN,            "PCIE_WL_POWERDOWN");
+	   gpio_request(PCIE_WAKE,                    "PCIE_WAKE");
+	   gpio_request(PCIE_RESET,                   "PCIE_RESET");
+	   gpio_request(PCIE_W_DISABLE_GPIO,          "PCIE_W_DISABLE_GPIO");
+	   gpio_direction_output(PCIE_WL_POWERDOWN,    1); // Switch on Wifi Module
+	   gpio_direction_output(PCIE_W_DISABLE_GPIO,  1); // Do not disable PCIe
+	   gpio_direction_input(PCIE_WAKE);                // Take Wake as input
+	   gpio_direction_output(PCIE_RESET,           0); // Activate Reset
+	   udelay(1000);	
+	   gpio_direction_output(PCIE_RESET,           1);
+	   udelay(500);	
+	   gpio_direction_output(PCIE_RESET,           0); // Activate Reset again
+	   udelay(500);	
+	   gpio_direction_output(PCIE_RESET,           1);
+	   // mx8qm_pcie_init();	   
+	 }else
+	 if( pcie_ext )	  
+	 {
+	   printk("> Setup PCIe Gpios for external PCIe Slot\n");	   	   
+	   imx_iomux_v3_setup_multiple_pads(pcie_ext_pads, ARRAY_SIZE(pcie_ext_pads));
+	   gpio_request(PCIE_WAKE_EXT,                      "PCIE_WAKE_EXT");
+	   gpio_request(PCIE_RESET_EXT,                     "PCIE_RESET_EXT");
+	   gpio_request(PCIE_W_DISABLE_GPIO_EXT,            "PCIE_W_DISABLE_GPIO_EXT");
+	   gpio_direction_output(PCIE_W_DISABLE_GPIO_EXT,1); // Do not disable PCIe
+	   gpio_direction_input(PCIE_WAKE_EXT);              // Take Wake as input
+	   gpio_direction_output(PCIE_RESET_EXT,         0); // Activate Reset
+	   udelay(1000);	
+	   gpio_direction_output(PCIE_RESET_EXT,        1);
+	   udelay(500);	
+	   gpio_direction_output(PCIE_RESET_EXT,        0); // Activate Reset again
+	   udelay(500);	
+	   gpio_direction_output(PCIE_RESET_EXT,        1);
+	   // mx8qm_pcie_init();	   
+	 }
+}
+
+void pci_init_board(void)
+{
+  /* test the 1 lane mode of the PCIe A controller */
+  printf("%s:***************************************************\n", __func__);
+}
   
 int board_init(void)
 {
@@ -257,7 +347,7 @@ int board_init(void)
 #ifdef CONFIG_FEC_MXC
 	setup_fec();
 #endif
-
+	//setup_pcie(); /* environment not read here */
 	return 0;
 }
 
@@ -277,7 +367,7 @@ int board_late_init(void)
 #ifdef CONFIG_ENV_IS_IN_MMC
 	board_late_mmc_env_init();
 #endif
-
+  setup_pcie();
 	return 0;
 }
 
