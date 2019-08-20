@@ -748,10 +748,15 @@ int clock_init()
 	clock_enable(CCGR_TEMP_SENSOR, 1);
 
 	clock_enable(CCGR_SEC_DEBUG, 1);
-
+	clock_enable(CCGR_PCIE,      1);
 	enable_display_clk(1);
 	return 0;
 };
+
+void pci_clk_enable(void)
+{
+  clock_enable(CCGR_PCIE, 1);
+}
 
 int set_clk_qspi(void)
 {
