@@ -36,15 +36,19 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define UART_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_FSEL1)
-#define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
+#define UART_PAD_CTRL	 (PAD_CTL_DSE6 | PAD_CTL_FSEL1)
+#define WDOG_PAD_CTRL	 (PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
 #define GPIO_PAD_CTRL   (PAD_CTL_DSE6 )
+
+#define GPIO_PAD_PU_CTRL (PAD_CTL_DSE6 | PAD_CTL_PUE | PAD_CTL_PE)
+#define GPIO_PAD_PD_CTRL (PAD_CTL_DSE6 |               PAD_CTL_PE)
 
 static iomux_v3_cfg_t const uart_pads[] = {
 	IMX8MM_PAD_UART1_RXD_UART1_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
 	IMX8MM_PAD_UART1_TXD_UART1_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
+#define PCIE_CLKREQ             IMX_GPIO_NR(5,20)
 #define PCIE_WL_POWERDOWN       IMX_GPIO_NR(3, 5)
 #define PCIE_W_DISABLE_GPIO     IMX_GPIO_NR(3,17)
 #define PCIE_RESET              IMX_GPIO_NR(2,19)
@@ -56,7 +60,8 @@ static iomux_v3_cfg_t const uart_pads[] = {
 
   
 static iomux_v3_cfg_t const pcie_wifi_pads[] = {
-        IMX8MM_PAD_I2C4_SCL_PCIE1_CLKREQ_B  | MUX_PAD_CTRL(0x61),          // CLKREQ_B
+        IMX8MM_PAD_I2C4_SCL_PCIE1_CLKREQ_B  | MUX_PAD_CTRL(0x61),          // CLKREQ_B  
+//      IMX8MM_PAD_I2C4_SCL_GPIO5_IO20      | MUX_PAD_CTRL(GPIO_PAD_CTRL), // CLKREQ_B
 	IMX8MM_PAD_NAND_WE_B_GPIO3_IO17     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_W_DISABLE_GPIO
 	IMX8MM_PAD_SD2_RESET_B_GPIO2_IO19   | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_RESET
 	IMX8MM_PAD_NAND_CLE_GPIO3_IO5       | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_WL_POWERDOWN
@@ -133,6 +138,8 @@ static iomux_v3_cfg_t const fec1_nrst_pads[] = {
 	IMX8MM_PAD_ENET_RD2_ENET1_RGMII_RD2       | MUX_PAD_CTRL(0x91),
 	IMX8MM_PAD_ENET_RXC_ENET1_RGMII_RXC       | MUX_PAD_CTRL(0x91),
 	IMX8MM_PAD_ENET_RD3_ENET1_RGMII_RD3       | MUX_PAD_CTRL(0x91),
+	IMX8MM_PAD_ENET_RD0_ENET1_RGMII_RD0       | MUX_PAD_CTRL(0x91),	
+	IMX8MM_PAD_ENET_RD1_ENET1_RGMII_RD1       | MUX_PAD_CTRL(0x91),
 };
 
 #define FEC_RST_PAD IMX_GPIO_NR(1, 9)
@@ -142,13 +149,14 @@ static iomux_v3_cfg_t const fec1_nrst_pads[] = {
 #define FEC_MODE3   IMX_GPIO_NR(1,29)
 
 static iomux_v3_cfg_t const fec1_rst_pads[] = {
-        IMX8MM_PAD_GPIO1_IO09_GPIO1_IO9           | MUX_PAD_CTRL(NO_PAD_CTRL),
-	IMX8MM_PAD_ENET_RX_CTL_GPIO1_IO24         | MUX_PAD_CTRL(NO_PAD_CTRL),
-	IMX8MM_PAD_ENET_RD2_GPIO1_IO28            | MUX_PAD_CTRL(NO_PAD_CTRL),
-	IMX8MM_PAD_ENET_RXC_GPIO1_IO25            | MUX_PAD_CTRL(NO_PAD_CTRL),
-	IMX8MM_PAD_ENET_RD3_GPIO1_IO29            | MUX_PAD_CTRL(NO_PAD_CTRL),
+        IMX8MM_PAD_GPIO1_IO09_GPIO1_IO9           | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
+	IMX8MM_PAD_ENET_RX_CTL_GPIO1_IO24         | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
+	IMX8MM_PAD_ENET_RD2_GPIO1_IO28            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
+	IMX8MM_PAD_ENET_RXC_GPIO1_IO25            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
+	IMX8MM_PAD_ENET_RD3_GPIO1_IO29            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
+	IMX8MM_PAD_ENET_RD0_GPIO1_IO26            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
+	IMX8MM_PAD_ENET_RD1_GPIO1_IO27            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
 	/*
-
 	IMX8MM_PAD_ENET_MDC_ENET1_MDC	          | MUX_PAD_CTRL(	0x03),
 	IMX8MM_PAD_ENET_MDIO_ENET1_MDIO           | MUX_PAD_CTRL(	0x03),
 	IMX8MM_PAD_ENET_TD3_ENET1_RGMII_TD3       | MUX_PAD_CTRL(	0x1f),
@@ -171,24 +179,22 @@ static void setup_iomux_fec(void)
 
 	printf("%s: reset fec\n", __func__);
 	imx_iomux_v3_setup_multiple_pads(fec1_rst_pads, ARRAY_SIZE(fec1_rst_pads));
+	gpio_request(FEC_RST_PAD, "fec1_rst");
+	gpio_direction_output(FEC_RST_PAD, 0);
+	udelay(1000);		
 #if 1
 	gpio_request(FEC_MODE0,"fec_mode0");	gpio_direction_output(FEC_MODE0, 0);
 	gpio_request(FEC_MODE1,"fec_mode1");	gpio_direction_output(FEC_MODE1, 0);
 	gpio_request(FEC_MODE2,"fec_mode2");	gpio_direction_output(FEC_MODE2, 0);
 	gpio_request(FEC_MODE3,"fec_mode3");	gpio_direction_output(FEC_MODE3, 0);
 #endif
-	gpio_request(FEC_RST_PAD, "fec1_rst");
-	gpio_direction_output(FEC_RST_PAD, 0);
-	udelay(500);
 	gpio_direction_output(FEC_RST_PAD, 1);
-#if 1
-	udelay(1000);
+	udelay(50);
 	gpio_direction_output(FEC_RST_PAD, 0);
 	udelay(1000);
 	gpio_direction_output(FEC_RST_PAD, 1);
-#endif
 	imx_iomux_v3_setup_multiple_pads(fec1_nrst_pads, ARRAY_SIZE(fec1_nrst_pads));
-
+	udelay(1000);
 
 }
 
@@ -197,10 +203,10 @@ static int setup_fec(void)
 	struct iomuxc_gpr_base_regs *const iomuxc_gpr_regs
 		= (struct iomuxc_gpr_base_regs *) IOMUXC_GPR_BASE_ADDR;
 	/* Use 125M anatop REF_CLK1 for ENET1, not from external */
-	setup_iomux_fec();
 	printf("%s: Enable FEC CLK\n", __func__);
 	clrsetbits_le32(&iomuxc_gpr_regs->gpr[1],IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_SHIFT, 0);
 	set_clk_enet(ENET_125MHZ);
+	setup_iomux_fec();
 	return 0;
 }
 
@@ -234,11 +240,53 @@ void board_phy_dump(struct phy_device *phydev)
     printf("Phy Adr: 0x%02x -> 0x%02x\n", i, phy_read(phydev, MDIO_DEVAD_NONE, i));
   
 }
- 
+
+#define AR803x_PHY_DEBUG_ADDR_REG	0x1d
+#define AR803x_PHY_DEBUG_DATA_REG	0x1e
+#define AR803x_PHY_MMD_ADDR_REG	        0x0d
+#define AR803x_PHY_MMD_OFFSET_REG	0x0e
+
+void ar8031_write_debug_reg(struct phy_device *phydev, int reg, int value)
+{
+  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_DEBUG_ADDR_REG, reg);
+  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_DEBUG_DATA_REG, value);  
+}
+
+int ar8031_write_mmd_reg(struct phy_device *phydev, int mmd, int reg, int value)
+{
+  int regval;
+  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_ADDR_REG,         mmd);
+  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_OFFSET_REG,       reg);
+  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_ADDR_REG,(0x4000|mmd));
+  regval=phy_read(phydev, MDIO_DEVAD_NONE,      AR803x_PHY_MMD_OFFSET_REG);
+  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_OFFSET_REG,     value);  
+  return(regval);  
+}
+
+int ar8031_read_mmd_reg(struct phy_device *phydev, int mmd, int reg)
+{
+  int regval;
+  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_ADDR_REG,         mmd);
+  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_OFFSET_REG,       reg);
+  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_ADDR_REG,(0x4000|mmd));
+  regval=phy_read(phydev, MDIO_DEVAD_NONE,      AR803x_PHY_MMD_OFFSET_REG);
+  return(regval&0xffff);  
+}
+
+#define MMD7                   0x07
+#define MMD3                   0x03
+#define SGMII_Control_Register 0x8011
+#define EEE_Advertisement      0x3C
+#define EEE_Control            0x805D
+#define VDIFF_900mV            0x8000
+#define VDIFF_800mV            0x6000
+#define VDIFF_700mV            0x4000
+#define VDIFF_600mV            0x2000
+
 
 int board_phy_config(struct phy_device *phydev)
 {
-  int i=100;
+  int j,i=100;
   
   /* enable rgmii rxc skew and phy mode select to RGMII copper */
 #if 0
@@ -247,31 +295,51 @@ int board_phy_config(struct phy_device *phydev)
   while( i-- && ((phy_read(phydev, MDIO_DEVAD_NONE, 0x00) & 0x8000)!=0))
     udelay(1000);
 #endif
-
   if (phydev->drv->config)
     phydev->drv->config(phydev);
 
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x1F, 0x8040);
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x1f);
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x02);  
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x00);
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x82ee);
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x05);
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x100);
-
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x00, 0x1140);
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x1F, 0x8500); // 0xF400); // 0x8400
+#if 0
+  //  ar8031_write_debug_reg(phydev,  0x1f, 0x0008);  
+  ar8031_write_debug_reg(phydev,  0x00, 0x82ee);
+  ar8031_write_debug_reg(phydev,  0x05, 0x0100);
+#endif  
+  i= ar8031_read_mmd_reg(phydev,MMD7,EEE_Advertisement);    
   if( ethernet_1GB() == 0 )
-    phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x000);    // Do not use 1GBit 
-  else
+  {
+    phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x000);    // Do not use 1GBit
+    j  =  i & ~4;
+    j &= ~2;    
+    printf("%s: Set Phy to 100MBit EEE=0x%04x->0x%04x\n", __func__, i, j);
+    ar8031_write_mmd_reg(phydev,MMD7,EEE_Advertisement,i);// Write MMD7 EEE no EEE mode
+  }else
+  {
+    printf("%s: Set Phy to 1GBit\n", __func__);        
     phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x300);    // use 1GBit 
- 
-  i = phy_read(phydev, MDIO_DEVAD_NONE, 0x14);
-  i &= ~0x1C;
-  i |=  0x04;
-  i &= ~0x02;
-  printf("%s: Phy Write 0x14 0x%02x \n", __func__, i);
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x14, i);  
-  
+  }
+
+  i= ar8031_read_mmd_reg( phydev,MMD3,EEE_Control);
+  j= i & ~0x100;
+  printf("%s: Disable EEE Control    0x%04x->0x%04x\n", __func__, i, j);  
+  i= ar8031_write_mmd_reg(phydev,MMD3,EEE_Control, j);  
+
+  i  = phy_read(phydev, MDIO_DEVAD_NONE, 0x14);
+  j  = i & ~0xFDC;   /* Mask Retry Limit        */
+//j &= ~0x20;        /* No Smartspeed en        */
+  j |=  0x04;        /* Retry Limit = 1         */
+  j |=  0x02;        /* Bypass Smartspeed timer */
+  j  =  0x3C;  
+  printf("%s: Smart Speed Register   0x%04x->0x%04x\n", __func__, i, j);  
+
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x14, j);
+
+  i= ar8031_read_mmd_reg(phydev,MMD7,SGMII_Control_Register);
+  j= ( i & 0xfff) | VDIFF_900mV;
+  printf("%s: SGMII_Control_Register 0x%04x->0x%04x\n", __func__, i, j);  
+  ar8031_write_mmd_reg(phydev,MMD7,SGMII_Control_Register, j);// Write MMD7 8011 900mV    
   phy_write(phydev, MDIO_DEVAD_NONE, 0x0,  0x3200);   // 100MBit restart AN
+
   return(0);  
 }
 #endif
@@ -293,21 +361,30 @@ static void setup_pcie(void)
 	   pcie_ext      = (strncmp(s,"extern",      2) == 0) ? 1:0;
 	   printk("%s: Environment pcie=%s ", __func__, s);
 	 }else
-	   printk("%s: Environment variable pcie not set. Skip Init PCIe gpios\n", __func__);	   
-
+	 {	       
+	   printk("%s: Environment variable pcie not set. Skip Init PCIe gpios\n", __func__);
+	   internal_wifi=1;	   
+	 }
+	 
 	 if( internal_wifi )
 	 {
 	   printk("> Setup PCIe Gpios for onboard Wifi Card\n");	   
 	   imx_iomux_v3_setup_multiple_pads(pcie_wifi_pads, ARRAY_SIZE(pcie_wifi_pads));
+	   gpio_request(PCIE_CLKREQ,                  "PCIE_CLKREQ");
 	   gpio_request(PCIE_WL_POWERDOWN,            "PCIE_WL_POWERDOWN");
 	   gpio_request(PCIE_WAKE,                    "PCIE_WAKE");
 	   gpio_request(PCIE_RESET,                   "PCIE_RESET");
 	   gpio_request(PCIE_W_DISABLE_GPIO,          "PCIE_W_DISABLE_GPIO");
-	   gpio_direction_output(PCIE_WL_POWERDOWN,    1); // Switch on Wifi Module
-	   gpio_direction_output(PCIE_W_DISABLE_GPIO,  1); // Do not disable PCIe
-	   gpio_direction_input(PCIE_WAKE);                // Take Wake as input
+	   
+	   gpio_direction_output(PCIE_CLKREQ,          0); // Switch on PCIE CLKREQ
+	   gpio_direction_output(PCIE_WL_POWERDOWN,    0); // Switch on Wifi Module
+	   gpio_direction_output(PCIE_W_DISABLE_GPIO,  0); // Do not disable PCIe
+	   gpio_direction_input( PCIE_WAKE);               // Take Wake as input
 	   gpio_direction_output(PCIE_RESET,           0); // Activate Reset
+	   udelay(1000);
+	   gpio_direction_output(PCIE_WL_POWERDOWN,    1); // Switch on Wifi Module
 	   udelay(1000);	
+	   gpio_direction_output(PCIE_W_DISABLE_GPIO,  1); // Do not disable PCIe
 	   gpio_direction_output(PCIE_RESET,           1);
 	   udelay(500);	
 	   gpio_direction_output(PCIE_RESET,           0); // Activate Reset again
@@ -347,7 +424,7 @@ int board_init(void)
 #ifdef CONFIG_FEC_MXC
 	setup_fec();
 #endif
-	//setup_pcie(); /* environment not read here */
+	setup_pcie(); /* environment not read here */
 	return 0;
 }
 
