@@ -127,6 +127,9 @@
 #define CONFIG_SYS_LOAD_ADDR            CONFIG_LOADADDR
 #define SCRIPT_ADDR                     0x40400000
 
+#ifndef  CONFIG_APPEND_BOOTARGS
+#define CONFIG_APPEND_BOOTARGS          1
+#endif
 
 /*
  * Another approach is add the clocks for inmates into clks_init_on
@@ -172,6 +175,8 @@
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	CONFIG_MFG_ENV_SETTINGS \
 	JAILHOUSE_ENV \
+	"pcie=wifionboard\0"                              \
+        "append_bootargs=androidboot.selinux=permissive\0"\
 	"script=boot.scr\0" \
 	"splashpos=m,m\0"			   \
 	"image=Image\0"                            \
@@ -251,7 +256,7 @@
 	       "else if       run loadbootscriptfatandroid; then run bootscript; "    \
 	         "else if     run loadimageext4;            then run mmcboot; "       \
                    "else if   run loadimagefat;             then run mmcboot; "       \
-                     "else    mw.b $fdt_addr 0 0x40;             run loadfdtandroid; "\
+                     "else    mw.b $fdt_addr 0 0x40;        run loadfdtandroid; "     \
 	                  "if  run loadandroid; then  ;     else run netboot; "       \
                           "fi; "\
 		     "fi; "    \
@@ -431,6 +436,9 @@
 #define CONFIG_OF_SYSTEM_SETUP
 #define IS_TRIZEPS8_MINI
 
+/*************************************************************************************************************/
+/* Modify config for Android                                                                                 */
+/*************************************************************************************************************/
 #if defined(CONFIG_ANDROID_SUPPORT)
 #define IMX8MM_EVK_ANDROID_H
 
