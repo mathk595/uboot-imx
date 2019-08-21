@@ -23,6 +23,14 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#define CONFIG_TARGET_TRIZEPS8MINI_V1R1		1
+
+#ifdef CONFIG_TARGET_TRIZEPS8MINI_V1R1
+#define	FPGA_CORE_VOLTAGE_1V3	1
+#endif
+
+
+
 void spl_dram_init(void)
 {
 	ddr_init(&dram_timing);
@@ -168,6 +176,11 @@ int power_init_board(void)
 
 	/* Set VDD_FPGA_MIPI to 2.5V */
 	pmic_reg_write(p, BD71837_LDO5_VOLT, 0xC7);
+
+#ifdef FPGA_CORE_VOLTAGE_1V3
+	/* Set FPGA-Core-Voltage to 1.3V (default 1.2V) */
+	pmic_reg_write(p, BD71837_LDO6_VOLT, 0xC4);
+#endif
 
 	/* lock the PMIC regs */
 	pmic_reg_write(p, BD71837_REGLOCK, 0x11);
