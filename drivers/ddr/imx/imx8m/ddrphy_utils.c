@@ -11,6 +11,14 @@
 #include <asm/arch/ddr.h>
 #include <asm/arch/lpddr4_define.h>
 
+#ifdef LOG_DDR4_TRAINING_LEVEL
+#define LOG_VERBOSE LOG_DDR4_TRAINING_LEVEL
+#else
+#define LOG_VERBOSE 1
+#endif
+
+#define ddr_printf(args...) debug(args)
+
 static inline void poll_pmu_message_ready(void)
 {
 	unsigned int reg;
@@ -94,7 +102,9 @@ void wait_ddrphy_training_complete(void)
 		if (mail == 0x08) {
 			decode_streaming_message();
 		} else if (mail == 0x07) {
-			debug("Training PASS\n");
+#if LOG_VERBOSE 
+			printf("Training PASS\n");
+#endif
 			break;
 		} else if (mail == 0xff) {
 			printf("Training FAILED\n");

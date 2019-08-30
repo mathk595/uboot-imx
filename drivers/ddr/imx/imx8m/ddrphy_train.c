@@ -8,6 +8,12 @@
 #include <asm/arch/ddr.h>
 #include <asm/arch/lpddr4_define.h>
 
+#ifdef LOG_DDR4_TRAINING_LEVEL
+#define LOG_VERBOSE LOG_DDR4_TRAINING_LEVEL
+#else
+#define LOG_VERBOSE 1
+#endif
+
 void ddr_cfg_phy(struct dram_timing_info *dram_timing)
 {
 	struct dram_cfg_param *dram_cfg;
@@ -28,7 +34,9 @@ void ddr_cfg_phy(struct dram_timing_info *dram_timing)
 	/* load the frequency setpoint message block config */
 	fsp_msg = dram_timing->fsp_msg;
 	for (i = 0; i < dram_timing->fsp_msg_num; i++) {
-		debug("DRAM PHY training for %dMTS\n", fsp_msg->drate);
+#if LOG_VERBOSE
+		printf("DRAM PHY training for %dMTS\n", fsp_msg->drate);
+#endif
 		/* set dram PHY input clocks to desired frequency */
 		ddrphy_init_set_dfi_clk(fsp_msg->drate);
 

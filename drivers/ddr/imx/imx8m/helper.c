@@ -23,6 +23,12 @@ DECLARE_GLOBAL_DATA_PTR;
 #define DMEM_OFFSET_ADDR 0x00054000
 #define DDR_TRAIN_CODE_BASE_ADDR IP2APB_DDRPHY_IPS_BASE_ADDR(0)
 
+#ifdef LOG_DDR4_TRAINING_LEVEL
+#define LOG_VERBOSE LOG_DDR4_TRAINING_LEVEL
+#else
+#define LOG_VERBOSE 1
+#endif
+
 /* We need PHY iMEM PHY is 32KB padded */
 void ddr_load_train_firmware(enum fw_type type)
 {
@@ -56,8 +62,9 @@ void ddr_load_train_firmware(enum fw_type type)
 		pr_from32 += 4;
 		i += 4;
 	}
-
-	debug("check ddr_pmu_train_imem code\n");
+#if LOG_VERBOSE
+	printf("check ddr4_pmu_train_imem code\n");
+#endif
 	pr_from32 = imem_start;
 	pr_to32 = DDR_TRAIN_CODE_BASE_ADDR + 4 * IMEM_OFFSET_ADDR;
 	for (i = 0x0; i < IMEM_LEN; ) {
@@ -73,12 +80,16 @@ void ddr_load_train_firmware(enum fw_type type)
 		pr_to32 += 4;
 		i += 4;
 	}
-	if (error)
-		printf("check ddr_pmu_train_imem code fail=%d\n", error);
-	else
-		debug("check ddr_pmu_train_imem code pass\n");
+	if (error) {
+		printf("check ddr4_pmu_train_imem code fail=%d\n",error);
+	}
+#if LOG_VERBOSE
+	else {
+		printf("check ddr4_pmu_train_imem code pass\n");
+	}
 
-	debug("check ddr4_pmu_train_dmem code\n");
+	printf("check ddr4_pmu_train_dmem code\n");
+#endif
 	pr_from32 = dmem_start;
 	pr_to32 = DDR_TRAIN_CODE_BASE_ADDR + 4 * DMEM_OFFSET_ADDR;
 	for (i = 0x0; i < DMEM_LEN;) {
@@ -94,10 +105,14 @@ void ddr_load_train_firmware(enum fw_type type)
 		i += 4;
 	}
 
-	if (error)
-		printf("check ddr_pmu_train_dmem code fail=%d", error);
-	else
-		debug("check ddr_pmu_train_dmem code pass\n");
+	if (error) {
+		printf("check ddr4_pmu_train_dmem code fail=%d",error);
+	} 
+#if LOG_VERBOSE
+	else {
+		printf("check ddr4_pmu_train_dmem code pass\n");
+	}
+#endif
 }
 
 void ddrphy_trained_csr_save(struct dram_cfg_param *ddrphy_csr,
