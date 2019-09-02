@@ -38,7 +38,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define UART_PAD_CTRL	 (PAD_CTL_DSE6 | PAD_CTL_FSEL1)
 #define WDOG_PAD_CTRL	 (PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
-#define GPIO_PAD_CTRL   (PAD_CTL_DSE6 )
+#define GPIO_PAD_CTRL    (PAD_CTL_DSE6 | PAD_CTL_FSEL1)
 
 #define GPIO_PAD_PU_CTRL (PAD_CTL_DSE6 | PAD_CTL_PUE | PAD_CTL_PE)
 #define GPIO_PAD_PD_CTRL (PAD_CTL_DSE6 |               PAD_CTL_PE)
@@ -69,11 +69,11 @@ static iomux_v3_cfg_t const pcie_wifi_pads[] = {
 };
 
 static iomux_v3_cfg_t const pcie_ext_pads[] = {
-        IMX8MM_PAD_I2C4_SCL_PCIE1_CLKREQ_B  | MUX_PAD_CTRL(0x61),          // CLKREQ_B
-	IMX8MM_PAD_SAI1_TXD3_GPIO4_IO15     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_W_DISABLE_GPIO
-	IMX8MM_PAD_SAI1_TXD5_GPIO4_IO17     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_RESET
-	IMX8MM_PAD_NAND_CLE_GPIO3_IO5       | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_WL_POWERDOWN
-	IMX8MM_PAD_NAND_DATA07_GPIO3_IO13   | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_WAKE
+	IMX8MM_PAD_SAI1_TXD5_GPIO4_IO17     | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL), // PCIE_RESET
+        IMX8MM_PAD_I2C4_SCL_PCIE1_CLKREQ_B  | MUX_PAD_CTRL(0x61),             // CLKREQ_B
+	IMX8MM_PAD_SAI1_TXD3_GPIO4_IO15     | MUX_PAD_CTRL(GPIO_PAD_CTRL),    // PCIE_W_DISABLE_GPIO
+	IMX8MM_PAD_NAND_CLE_GPIO3_IO5       | MUX_PAD_CTRL(GPIO_PAD_CTRL),    // PCIE_WL_POWERDOWN
+	IMX8MM_PAD_NAND_DATA07_GPIO3_IO13   | MUX_PAD_CTRL(GPIO_PAD_CTRL),    // PCIE_WAKE
 };
 
 #define USBH_PWR_GPIO IMX_GPIO_NR(1,14)  
@@ -90,16 +90,35 @@ static iomux_v3_cfg_t const wdog_pads[] = {
 };
 #endif
 
+#define GPIO4_DATA *(unsigned int *)0x30230000
+#define GPIO4_DIR  *(unsigned int *)0x30230004
+#define GPIO4_MUX  *(unsigned int *)0x30330178
+#define GPIO4_PAD  *(unsigned int *)0x303303E0
+
+int iomux_sai1_txd5, iopad_sai1_txd5;
+
+static void init_gpio4_17(int level)
+{
+       unsigned int dir,reg;
+       iomux_sai1_txd5=GPIO4_MUX;
+       iopad_sai1_txd5=GPIO4_PAD;       
+       imx_iomux_v3_setup_multiple_pads(pcie_ext_pads, 1); // Init expernal GPIO 4.17
+
+       reg= level ? (GPIO4_DATA | (1<<17)) : (GPIO4_DATA & ~(1<<17));
+       GPIO4_DATA = reg;
+       dir =  GPIO4_DIR | 1<<17;
+       GPIO4_DIR=dir;
+
+}
+
 int board_early_init_f(void)
 {
+  //    init_gpio4_17(0);  
 #if TRIZEPS8_USE_RESET_OUT_AS_WATCHDOG_OUT
 	struct wdog_regs *wdog = (struct wdog_regs *)WDOG1_BASE_ADDR;
-
 	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
-
 	set_wdog_reset(wdog);
 #endif
-
 	imx_iomux_v3_setup_multiple_pads(usb_pads, ARRAY_SIZE(usb_pads));
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
 	return 0;
@@ -420,7 +439,9 @@ void pci_init_board(void)
   
 int board_init(void)
 {
-
+  //    init_gpio4_17(0);  
+  //    printf("GPIO4.17 mux 0x%x, GPIO4.17 pad 0x%x \n", iomux_sai1_txd5, iopad_sai1_txd5);
+  
 #ifdef CONFIG_FEC_MXC
 	setup_fec();
 #endif
