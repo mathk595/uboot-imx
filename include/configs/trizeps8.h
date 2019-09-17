@@ -1,14 +1,20 @@
 /*
- * Copyright 2017 NXP
+ * Copyright 2018 NXP
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
+
+#if 0
+#define DEBUG 1
+#define CONFIG_SYS_DCACHE_OFF
+#endif
 
 #ifndef __IMX8M_TRIZEPS8_H
 #define __IMX8M_TRIZEPS8_H
 
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
+
 #include "imx_env.h"
 
 #ifdef CONFIG_SECURE_BOOT
@@ -25,8 +31,8 @@
 #ifdef CONFIG_SPL_BUILD
 /*#define CONFIG_ENABLE_DDR_TRAINING_DEBUG*/
 #define CONFIG_SPL_WATCHDOG_SUPPORT
-#define CONFIG_SPL_DRIVERS_MISC_SUPPORT
 #define CONFIG_SPL_POWER_SUPPORT
+#define CONFIG_SPL_DRIVERS_MISC_SUPPORT
 #define CONFIG_SPL_I2C_SUPPORT
 #define CONFIG_SPL_LDSCRIPT		"arch/arm/cpu/armv8/u-boot-spl.lds"
 #define CONFIG_SPL_STACK		0x187FF0
@@ -34,11 +40,11 @@
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
-#define CONFIG_SPL_MMC_SUPPORT
+/* #define CONFIG_SPL_MMC_SUPPORT in defconfig */
 #define CONFIG_SPL_BSS_START_ADDR      0x00180000
 #define CONFIG_SPL_BSS_MAX_SIZE        0x2000	/* 8 KB */
 #define CONFIG_SYS_SPL_MALLOC_START    0x42200000
-#define CONFIG_SYS_SPL_MALLOC_SIZE    0x80000	/* 512 KB */
+#define CONFIG_SYS_SPL_MALLOC_SIZE     0x80000	/* 512 KB */
 #define CONFIG_SYS_SPL_PTE_RAM_BASE    0x41580000
 #define CONFIG_SYS_ICACHE_OFF
 #define CONFIG_SYS_DCACHE_OFF
@@ -51,6 +57,11 @@
 #undef CONFIG_DM_PMIC
 #undef CONFIG_DM_PMIC_PFUZE100
 
+#define CONFIG_POWER
+#define CONFIG_POWER_I2C
+#define CONFIG_POWER_PFUZE100
+#define CONFIG_POWER_PFUZE100_I2C_ADDR 0x08
+
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
@@ -58,11 +69,11 @@
 
 #define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 
-#define CONFIG_POWER
-#define CONFIG_POWER_I2C
-#define CONFIG_POWER_PFUZE100
-#define CONFIG_POWER_PFUZE100_I2C_ADDR 0x08
 #endif
+
+#define CONFIG_CMD_READ
+#define CONFIG_SERIAL_TAG
+#define CONFIG_FASTBOOT_USB_DEV 0
 
 #define CONFIG_REMAKE_ELF
 
@@ -129,21 +140,42 @@
 	"image=Image\0" \
 	"console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200\0" \
 	"fdt_addr=0x43000000\0"			\
+        "script_addr="__stringify(SCRIPT_ADDR)"\0"  \
 	"fdt_high=0xffffffffffffffff\0"		\
 	"boot_fdt=try\0" \
 	"fdt_file=kuk-trizeps8.dtb\0" \
 	"initrd_addr=0x43800000\0"		\
 	"initrd_high=0xffffffffffffffff\0" \
+	"fastboot_dev=mmc0\0"	           \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
+	"partfdtandroid=8\0"                        \
+	"ethspeed=100M\0"			    \
 	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
+	"mmcpartext4=1\0"                           \
 	"mmcautodetect=yes\0" \
+        "bootsector=66\0"                           \
+	"brickme_sd=mmc erase $bootsector 10\0"     \
+        "brickme_mmc=mmc partconf 0 1 0 1 ; mmc erase $bootsector 10 ;mmc partconf 0 1 1 1 ; mmc erase $bootsector 10 ;mmc partconf 0 0 0 0 ; mmc erase $bootsector 10 \0" \
+	"update_bl=mmc partconf 0 0 0 0 ; ums 0 mmc 0 \0"	                                    \
+        "serial_download=i2c dev 2; i2c mw 0x10 2.1 2 \0"                                           \
 	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 " \
-	"loadbootscript=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
-	"bootscript=echo Running bootscript from mmc ...; " \
-		"source\0" \
-	"loadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
-	"loadfdt=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
+	"loadbootscriptext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${script_addr} ${script};\0"      \
+	"loadbootscriptfat=fatload mmc ${mmcdev}:${mmcpart} ${script_addr} ${script};\0"            \
+	"loadbootscript   =fatload mmc ${mmcdev}:${mmcpart} ${script_addr} ${script};\0"            \
+	"loadbootscriptfatandroid=fatload mmc ${mmcdev}:${partfdtandroid} ${script_addr} ${script};\0" \
+	"loadbootscriptfatusb=fatload usb ${usbdev}:${usbpart} ${script_addr} ${script};\0"         \
+	"bootscript=echo Running bootscript...; source ${script_addr}\0"                            \
+	"loadimageext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${loadaddr} ${image}\0"                \
+	"loadimagefat=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0"                      \
+	"startandroid=boota mmc${mmcdev}\0"				                            \
+	"loadandroid=boota  mmc${mmcdev}\0"				                            \
+	"loadfdtfat=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0"                     \
+	"loadfdtext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${fdt_addr} ${fdt_file}\0"               \
+	"loadfdtandroid=fatload mmc ${mmcdev}:${partfdtandroid} ${fdt_addr} ${fdt_file}\0"          \
+	"loadfdt=echo loading fdt..;"                                                               \
+            "if run loadfdtext4; then echo loadtdext4 ok; else echo trying from fat....; "          \
+            "if run loadfdtfat;  then echo loadftdfat ok; fi; fi;\0"                                \
 	"mmcboot=echo Booting from mmc ...; " \
 		"run mmcargs; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
@@ -177,16 +209,22 @@
 		"fi;\0"
 
 #define CONFIG_BOOTCOMMAND \
-	   "mmc dev ${mmcdev}; if mmc rescan; then " \
-		   "if run loadbootscript; then " \
-			   "run bootscript; " \
-		   "else " \
-			   "if run loadimage; then " \
-				   "run mmcboot; " \
-			   "else run netboot; " \
-			   "fi; " \
-		   "fi; " \
-	   "else booti ${loadaddr} - ${fdt_addr}; fi"
+	"mmc dev ${mmcdev}; if mmc rescan; "\
+        "then "\
+	     "if              run loadbootscriptext4;       then run bootscript; "    \
+	     "else if         run loadbootscriptfat;        then run bootscript; "    \
+	       "else if       run loadbootscriptfatandroid; then run bootscript; "    \
+	         "else if     run loadimageext4;            then run mmcboot; "       \
+                   "else if   run loadimagefat;             then run mmcboot; "       \
+                     "else    mw.b $fdt_addr 0 0x40;        run loadfdtandroid; "     \
+	                  "if  run loadandroid; then  ;     else run startandroid; "  \
+                          "fi; "\
+		     "fi; "    \
+		   "fi; "      \
+		 "fi; "        \
+	       "fi; "          \
+	     "fi; "	       \
+	"else booti ${loadaddr} - ${fdt_addr}; fi "
 
 /* Link Definitions */
 #define CONFIG_LOADADDR			0x40480000
@@ -194,7 +232,7 @@
 #define CONFIG_SYS_LOAD_ADDR           CONFIG_LOADADDR
 
 #define CONFIG_SYS_INIT_RAM_ADDR        0x40000000
-#define CONFIG_SYS_INIT_RAM_SIZE        0x80000
+#define CONFIG_SYS_INIT_RAM_SIZE        0x00080000
 #define CONFIG_SYS_INIT_SP_OFFSET \
         (CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_ADDR \
@@ -202,9 +240,9 @@
 
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_ENV_OFFSET               (64 * SZ_64K)
-#define CONFIG_ENV_SIZE			0x1000
-#define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2 */
-#define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
+#define CONFIG_ENV_SIZE			0x2000
+#define CONFIG_SYS_MMC_ENV_DEV		0   /* USDHC2 */
+#define CONFIG_MMCROOT			"/dev/mmcblk0p2"  /* USDHC2 */
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		((CONFIG_ENV_SIZE + (2*1024) + (16*1024)) * 1024)
@@ -234,10 +272,12 @@
 					sizeof(CONFIG_SYS_PROMPT) + 16)
 
 #define CONFIG_IMX_BOOTAUX
-
+/* USDHC */
+/* USDHC */
 #define CONFIG_CMD_MMC
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
+
 
 #define CONFIG_SYS_FSL_USDHC_NUM	2
 #define CONFIG_SYS_FSL_ESDHC_ADDR       0
@@ -278,20 +318,15 @@
 #define CONFIG_USB_GADGET_MASS_STORAGE
 #define CONFIG_USB_FUNCTION_MASS_STORAGE
 
-#define CONFIG_CMD_READ
-
 #endif
 
-#define CONFIG_SERIAL_TAG
-#define CONFIG_FASTBOOT_USB_DEV 0
-
-
-#define CONFIG_USB_MAX_CONTROLLER_COUNT         2
-
+/* #define CONFIG_CI_UDC               */
+/* #define CONFIG_USB_GADGET_DUALSPEED */
 #define CONFIG_USBD_HS
 #define CONFIG_USB_GADGET_VBUS_DRAW 2
+#define CONFIG_USB_MAX_CONTROLLER_COUNT         2
 
-#define CONFIG_OF_SYSTEM_SETUP
+
 
 /* Framebuffer */
 #ifdef CONFIG_VIDEO
@@ -305,9 +340,97 @@
 #define CONFIG_IMX_VIDEO_SKIP
 #endif
 
+#define CONFIG_OF_SYSTEM_SETUP
+
 #if defined(CONFIG_ANDROID_SUPPORT)
-#include "imx8mq_evk_android.h"
-#elif defined (CONFIG_ANDROID_THINGS_SUPPORT)
-#include "imx8mq_evk_androidthings.h"
+#define IMX8MM_EVK_ANDROID_H
+
+#define CONFIG_BCB_SUPPORT
+
+#define CONFIG_ANDROID_AB_SUPPORT
+#define CONFIG_AVB_SUPPORT
+#define CONFIG_SUPPORT_EMMC_RPMB
+#define CONFIG_SYSTEM_RAMDISK_SUPPORT
+#define CONFIG_AVB_FUSE_BANK_SIZEW 0
+#define CONFIG_AVB_FUSE_BANK_START 0
+#define CONFIG_AVB_FUSE_BANK_END 0
+#define CONFIG_FASTBOOT_LOCK
+#define FSL_FASTBOOT_FB_DEV "mmc"
+
+#ifdef CONFIG_SYS_MALLOC_LEN
+#undef CONFIG_SYS_MALLOC_LEN
+#define CONFIG_SYS_MALLOC_LEN           (96 * SZ_1M)
+#endif
+
+#ifndef CONFIG_USB_FUNCTION_FASTBOOT
+#define CONFIG_USB_FUNCTION_FASTBOOT
+#endif
+
+#ifndef CONFIG_CMD_FASTBOOT
+#define CONFIG_CMD_FASTBOOT
+#endif
+
+#ifndef CONFIG_ANDROID_BOOT_IMAGE
+#define CONFIG_ANDROID_BOOT_IMAGE
+#endif
+
+#ifndef CONFIG_FASTBOOT_FLASH
+#define CONFIG_FASTBOOT_FLASH
+#endif
+
+#ifndef CONFIG_FASTBOOT_STORAGE_MMC
+#define CONFIG_FASTBOOT_STORAGE_MMC
+#endif
+
+#ifndef CONFIG_FSL_FASTBOOT
+#define CONFIG_FSL_FASTBOOT
+#endif
+
+#define CONFIG_ANDROID_RECOVERY
+
+#ifndef CONFIG_FASTBOOT_BUF_ADDR
+#define CONFIG_FASTBOOT_BUF_ADDR   CONFIG_SYS_LOAD_ADDR
+#else
+/* #warning("CONFIG_FASTBOOT_BUF_ADDR already set"); */
+#endif
+
+#ifndef CONFIG_FASTBOOT_BUF_SIZE
+#define CONFIG_FASTBOOT_BUF_SIZE   0x19000000
+#else
+/* #warning("CONFIG_FASTBOOT_BUF_SIZE already set"); */
+#endif
+
+#define CONFIG_CMD_BOOTA
+#define CONFIG_SUPPORT_RAW_INITRD
+#define CONFIG_SERIAL_TAG
+
+/* #undef CONFIG_EXTRA_ENV_SETTINGS */
+/* #undef CONFIG_BOOTCOMMAND */
+
+
+/* Enable mcu firmware flash */
+#ifdef CONFIG_FLASH_MCUFIRMWARE_SUPPORT
+#define ANDROID_MCU_FRIMWARE_DEV_TYPE DEV_MMC
+#define ANDROID_MCU_FIRMWARE_START 0x500000
+#define ANDROID_MCU_FIRMWARE_SIZE  0x40000
+#define ANDROID_MCU_FIRMWARE_HEADER_STACK 0x20020000
+#endif
+
+#ifdef CONFIG_FSL_CAAM_KB
+#undef CONFIG_FSL_CAAM_KB
+#endif
+#define AVB_AB_I_UNDERSTAND_LIBAVB_AB_IS_DEPRECATED
+
+#ifdef CONFIG_IMX_TRUSTY_OS
+#define AVB_RPMB
+#define KEYSLOT_HWPARTITION_ID 2
+#define KEYSLOT_BLKS             0x1FFF
+#define NS_ARCH_ARM64 1
+
+#ifdef CONFIG_SPL_BUILD
+#undef CONFIG_BLK
+#endif
+#endif
+
 #endif
 #endif

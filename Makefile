@@ -1874,6 +1874,18 @@ tests check:
 
 qcheck:
 	$(srctree)/test/run quick
+	
+tr8flash.bin: u-boot-nodtb.bin arch/arm/dts/kuk-trizeps8.dtb spl/u-boot-spl.bin u-boot.bin
+	@cd ../imx-mkimage/ 
+	@cd ../imx-mkimage/ ; make SOC=iMX8M clean 
+	@cp ../imx-mkimage/iMX8M/bl31-imx8mq.bin  ../imx-mkimage/iMX8M/bl31.bin
+	@cp u-boot-nodtb.bin                      ../imx-mkimage/iMX8M/
+	@cp arch/arm/dts/kuk-trizeps8.dtb         ../imx-mkimage/iMX8M/kuk-trizeps8.dtb
+	@cp spl/u-boot-spl.bin                    ../imx-mkimage/iMX8M/
+	@cp u-boot.bin                            ../imx-mkimage/iMX8M/
+	@cd ../imx-mkimage/ ; make SOC=iMX8M clean flash_trizeps8 ; cd ../uboot-imx
+	@cp ../imx-mkimage/iMX8M/flash.bin tr8flash.bin
+	@ls -l tr8flash.bin
 
 miniflash.bin: u-boot-nodtb.bin arch/arm/dts/kuk-trizeps8mini.dtb spl/u-boot-spl.bin u-boot.bin
 	@cd ../imx-mkimage/ 
