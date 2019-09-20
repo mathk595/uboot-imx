@@ -8,5 +8,6 @@ obj-y += trizeps8mini.o
 
 ifdef CONFIG_SPL_BUILD
 obj-y += spl.o
-obj-$(CONFIG_IMX8M_LPDDR4) += lpddr4_timing.o
+obj-$(CONFIG_IMX8M_LPDDR4) += lpddr4_timing_v1r1.o
+obj-$(CONFIG_IMX8M_LPDDR4) += lpddr4_timing_v1r2.o
 endif

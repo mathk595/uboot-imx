@@ -24,16 +24,24 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #define CONFIG_TARGET_TRIZEPS8MINI_V1R1		1
+//#define CONFIG_TARGET_TRIZEPS8MINI_V1R2		1	/* Also valid vor Myon II V1R1 */
+//#define CONFIG_TARGET_MYON2			1
 
 #ifdef CONFIG_TARGET_TRIZEPS8MINI_V1R1
 #define	FPGA_CORE_VOLTAGE_1V3	1
 #endif
 
-
+extern struct dram_timing_info dram_timing_v1r1;
+extern struct dram_timing_info dram_timing_v1r2;
 
 void spl_dram_init(void)
 {
-	ddr_init(&dram_timing);
+#ifdef CONFIG_TARGET_TRIZEPS8MINI_V1R1	
+	ddr_init(&dram_timing_v1r1);
+#else
+	// For Trizeps VIII Mini V1R2 and Myon II
+	ddr_init(&dram_timing_v1r2);
+#endif	
 }
 
 #define I2C_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PE)
@@ -79,6 +87,13 @@ static iomux_v3_cfg_t const usdhc2_pads[] = {
 	IMX8MM_PAD_SD2_DATA2_USDHC2_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	IMX8MM_PAD_SD2_DATA3_USDHC2_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 };
+
+#ifdef CONFIG_TARGET_MYON2
+#define RST_PAD IMX_GPIO_NR(3, 14)
+static iomux_v3_cfg_t const reset_out_pads[] = {
+	IMX8MM_PAD_NAND_DQS_GPIO3_IO14 | MUX_PAD_CTRL((PAD_CTL_HYS | PAD_CTL_DSE1)) 
+};
+#endif
 
 /*
  * The evk board uses DAT3 to detect CD card plugin,
@@ -184,6 +199,14 @@ int power_init_board(void)
 
 	/* lock the PMIC regs */
 	pmic_reg_write(p, BD71837_REGLOCK, 0x11);
+
+#ifdef CONFIG_TARGET_MYON2
+	/* Set Reset-out */
+	imx_iomux_v3_setup_multiple_pads(
+				reset_out_pads, ARRAY_SIZE(reset_out_pads));
+	gpio_request(RST_PAD, "reset_out");
+	gpio_direction_output(RST_PAD, 1);
+#endif
 
 	return 0;
 }
