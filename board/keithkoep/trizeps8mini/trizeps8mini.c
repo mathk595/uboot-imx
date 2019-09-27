@@ -519,8 +519,8 @@ int is_recovery_key_pressing(void)
 
 #ifdef CONFIG_VIDEO_MXS
 
-#define ADV7535_MAIN 0x3d
-#define ADV7535_DSI_CEC 0x3c
+#define ADV7535_MAIN 0x39
+#define ADV7535_DSI_CEC 0x3C
 
 static const struct sec_mipi_dsim_plat_data imx8mm_mipi_dsim_plat_data = {
 	.version	= 0x1060200,
@@ -563,104 +563,146 @@ static int adv7535_i2c_reg_read(struct udevice *dev, uint8_t addr, uint8_t *data
 	return 0;
 }
 
-static void adv7535_init(void)
+typedef struct stADV753XReg {
+	uint8_t addr;
+	uint8_t reg;
+	uint8_t val;
+} ADV753XREG, *PADV753XREG;
+
+static ADV753XREG advinit[] = {
+{0x39, 0x41, 0x10},
+{0xff, 0x05, 0x00},
+{0x39, 0xd6, 0x48},
+{0xff, 0x05, 0x00},
+{0x3c, 0x03, 0x89},
+{0x39, 0x16, 0x20},
+{0x39, 0x9a, 0xe0},
+{0x39, 0xba, 0x70},
+{0x39, 0xde, 0x82},
+{0x39, 0xe4, 0xc0},
+{0x39, 0xe5, 0x80},
+{0x3c, 0x15, 0xd0},
+{0x3c, 0x17, 0xd0},
+{0x3c, 0x24, 0x20},
+{0x3c, 0x57, 0x11},
+{0x39, 0xaf, 0x06},
+{0x39, 0x40, 0x80},
+{0x39, 0x4c, 0x04},
+{0x39, 0x49, 0x02},
+{0x39, 0x0d, 0x40},
+{0x3c, 0x1c, 0x40},
+{0x39, 0x17, 0x02},
+{0x3c, 0x16, 0x00},
+{0x3c, 0x27, 0xCB},
+{0x3c, 0x28, 0x89},
+{0x3c, 0x29, 0x80},
+{0x3c, 0x2a, 0x02},
+{0x3c, 0x2b, 0xc0},
+{0x3c, 0x2c, 0x05},
+{0x3c, 0x2d, 0x80},
+{0x3c, 0x2e, 0x09},
+{0x3c, 0x2f, 0x40},
+{0x3c, 0x30, 0x46},
+{0x3c, 0x31, 0x50},
+{0x3c, 0x32, 0x00},
+{0x3c, 0x33, 0x50},
+{0x3c, 0x34, 0x00},
+{0x3c, 0x35, 0x40},
+{0x3c, 0x36, 0x02},
+{0x3c, 0x37, 0x40},
+{0x3c, 0x27, 0xCB},
+{0x3c, 0x27, 0x8B},
+{0xff, 0x05, 0x00},
+{0x3c, 0x27, 0xCB},
+{0xff, 0x64, 0x00},
+{0x3c, 0x55, 0x00},
+{0x3c, 0x03, 0x09},
+{0xff, 0x05, 0x00},
+{0x3c, 0x03, 0x89},
+{0x39, 0x12, 0x20},
+{0x39, 0x13, 0x00},
+{0x39, 0x14, 0x02},
+{0x39, 0x15, 0x20},
+{0x39, 0x0a, 0x41},
+{0x39, 0x0c, 0xbc},
+{0x39, 0x0d, 0x18},
+{0x39, 0x03, 0x00},
+{0x39, 0x02, 0x18},
+{0x39, 0x01, 0x00},
+{0x39, 0x09, 0x70},
+{0x39, 0x08, 0x62},
+{0x39, 0x07, 0x00},
+{0x39, 0x73, 0x01},
+{0x39, 0x76, 0x00},
+{0x3c, 0x05, 0xC8},
+{0x00, 0x00, 0x00}
+};
+
+static int adv7535_init(void)
 {
 	struct udevice *bus, *main_dev, *cec_dev;
 	int i2c_bus = 1;
 	int ret;
 	uint8_t val;
+	PADV753XREG padvseq = &advinit[0];
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
 		printf("%s: No bus %d\n", __func__, i2c_bus);
-		return;
+		return 0;
 	}
 
 	ret = dm_i2c_probe(bus, ADV7535_MAIN, 0, &main_dev);
 	if (ret) {
 		printf("%s: Can't find device id=0x%x, on bus %d\n",
 			__func__, ADV7535_MAIN, i2c_bus);
-		return;
+		return 0;
 	}
 
 	ret = dm_i2c_probe(bus, ADV7535_DSI_CEC, 0, &cec_dev);
 	if (ret) {
 		printf("%s: Can't find device id=0x%x, on bus %d\n",
 			__func__, ADV7535_MAIN, i2c_bus);
-		return;
+		return 0;
 	}
 
 	adv7535_i2c_reg_read(main_dev, 0x00, &val);
-	debug("Chip revision: 0x%x (expected: 0x14)\n", val);
+	if ( val != 0x14) {
+		printf("Chip revision: 0x%x (expected: 0x14)\n", val);
+		return 0;
+	}
 	adv7535_i2c_reg_read(cec_dev, 0x00, &val);
-	debug("Chip ID MSB: 0x%x (expected: 0x75)\n", val);
+	if ( val != 0x75) {
+		printf("Chip ID MSB: 0x%x (expected: 0x75)\n", val);
+		return 0;
+	}
 	adv7535_i2c_reg_read(cec_dev, 0x01, &val);
-	debug("Chip ID LSB: 0x%x (expected: 0x33)\n", val);
+	if ( val != 0x33) {
+		printf("Chip ID LSB: 0x%x (expected: 0x33)\n", val);
+		return 0;
+	}
+	
+	while( padvseq->addr != 0)
+	{
+		if ( padvseq->addr == 0xFF )
+		{
+			mdelay( padvseq->reg);
+		}else
+		if ( padvseq->addr == ADV7535_MAIN)
+		{
+			adv7535_i2c_reg_write(main_dev, padvseq->reg, 0xff, padvseq->val);
+		}else
+		if ( padvseq->addr == ADV7535_DSI_CEC)
+		{
+			adv7535_i2c_reg_write(cec_dev, padvseq->reg, 0xff, padvseq->val);
+		}else
+		{
+			printf("Unknown ADV7535 address\n");
+		}
+		padvseq++;
+	}
 
-	/* Power */
-	adv7535_i2c_reg_write(main_dev, 0x41, 0xff, 0x10);
-	/* Initialisation (Fixed) Registers */
-	adv7535_i2c_reg_write(main_dev, 0x16, 0xff, 0x20);
-	adv7535_i2c_reg_write(main_dev, 0x9A, 0xff, 0xE0);
-	adv7535_i2c_reg_write(main_dev, 0xBA, 0xff, 0x70);
-	adv7535_i2c_reg_write(main_dev, 0xDE, 0xff, 0x82);
-	adv7535_i2c_reg_write(main_dev, 0xE4, 0xff, 0x40);
-	adv7535_i2c_reg_write(main_dev, 0xE5, 0xff, 0x80);
-	adv7535_i2c_reg_write(cec_dev, 0x15, 0xff, 0xD0);
-	adv7535_i2c_reg_write(cec_dev, 0x17, 0xff, 0xD0);
-	adv7535_i2c_reg_write(cec_dev, 0x24, 0xff, 0x20);
-	adv7535_i2c_reg_write(cec_dev, 0x57, 0xff, 0x11);
-	/* 4 x DSI Lanes */
-	adv7535_i2c_reg_write(cec_dev, 0x1C, 0xff, 0x40);
-
-	/* DSI Pixel Clock Divider */
-	adv7535_i2c_reg_write(cec_dev, 0x16, 0xff, 0x18);
-
-	/* Enable Internal Timing Generator */
-	adv7535_i2c_reg_write(cec_dev, 0x27, 0xff, 0xCB);
-	/* 1920 x 1080p 60Hz */
-	adv7535_i2c_reg_write(cec_dev, 0x28, 0xff, 0x89); /* total width */
-	adv7535_i2c_reg_write(cec_dev, 0x29, 0xff, 0x80); /* total width */
-	adv7535_i2c_reg_write(cec_dev, 0x2A, 0xff, 0x02); /* hsync */
-	adv7535_i2c_reg_write(cec_dev, 0x2B, 0xff, 0xC0); /* hsync */
-	adv7535_i2c_reg_write(cec_dev, 0x2C, 0xff, 0x05); /* hfp */
-	adv7535_i2c_reg_write(cec_dev, 0x2D, 0xff, 0x80); /* hfp */
-	adv7535_i2c_reg_write(cec_dev, 0x2E, 0xff, 0x09); /* hbp */
-	adv7535_i2c_reg_write(cec_dev, 0x2F, 0xff, 0x40); /* hbp */
-
-	adv7535_i2c_reg_write(cec_dev, 0x30, 0xff, 0x46); /* total height */
-	adv7535_i2c_reg_write(cec_dev, 0x31, 0xff, 0x50); /* total height */
-	adv7535_i2c_reg_write(cec_dev, 0x32, 0xff, 0x00); /* vsync */
-	adv7535_i2c_reg_write(cec_dev, 0x33, 0xff, 0x50); /* vsync */
-	adv7535_i2c_reg_write(cec_dev, 0x34, 0xff, 0x00); /* vfp */
-	adv7535_i2c_reg_write(cec_dev, 0x35, 0xff, 0x40); /* vfp */
-	adv7535_i2c_reg_write(cec_dev, 0x36, 0xff, 0x02); /* vbp */
-	adv7535_i2c_reg_write(cec_dev, 0x37, 0xff, 0x40); /* vbp */
-
-	/* Reset Internal Timing Generator */
-	adv7535_i2c_reg_write(cec_dev, 0x27, 0xff, 0xCB);
-	adv7535_i2c_reg_write(cec_dev, 0x27, 0xff, 0x8B);
-	adv7535_i2c_reg_write(cec_dev, 0x27, 0xff, 0xCB);
-
-	/* HDMI Output */
-	adv7535_i2c_reg_write(main_dev, 0xAF, 0xff, 0x16);
-	/* AVI Infoframe - RGB - 16-9 Aspect Ratio */
-	adv7535_i2c_reg_write(main_dev, 0x55, 0xff, 0x02);
-	adv7535_i2c_reg_write(main_dev, 0x56, 0xff, 0x0);
-
-	/*  GC Packet Enable */
-	adv7535_i2c_reg_write(main_dev, 0x40, 0xff, 0x0);
-	/*  GC Colour Depth - 24 Bit */
-	adv7535_i2c_reg_write(main_dev, 0x4C, 0xff, 0x0);
-	/*  Down Dither Output Colour Depth - 8 Bit (default) */
-	adv7535_i2c_reg_write(main_dev, 0x49, 0xff, 0x00);
-
-	/* set low refresh 1080p30 */
-	adv7535_i2c_reg_write(main_dev, 0x4A, 0xff, 0x80); /*should be 0x80 for 1080p60 and 0x8c for 1080p30*/
-
-	/* HDMI Output Enable */
-	adv7535_i2c_reg_write(cec_dev, 0xbe, 0xff, 0x3c);
-	adv7535_i2c_reg_write(cec_dev, 0x03, 0xff, 0x89);
+	return 1;
 }
 
 #define DISPLAY_MIX_SFT_RSTN_CSR		0x00
@@ -702,14 +744,6 @@ struct mipi_dsi_client_dev adv7535_dev = {
 	.name = "ADV7535",
 };
 
-struct mipi_dsi_client_dev rm67191_dev = {
-	.channel	= 0,
-	.lanes = 4,
-	.format  = MIPI_DSI_FMT_RGB888,
-	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
-			  MIPI_DSI_MODE_EOT_PACKET | MIPI_DSI_MODE_VIDEO_HSE,
-};
-
 #define FSL_SIP_GPC			0xC2000000
 #define FSL_SIP_CONFIG_GPC_PM_DOMAIN	0x3
 #define DISPMIX				9
@@ -717,9 +751,6 @@ struct mipi_dsi_client_dev rm67191_dev = {
 
 void do_enable_mipi2hdmi(struct display_info_t const *dev)
 {
-	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
-	gpio_direction_output(IMX_GPIO_NR(1, 8), 1);
-
 	/* ADV7353 initialization */
 	adv7535_init();
 
@@ -734,35 +765,6 @@ void do_enable_mipi2hdmi(struct display_info_t const *dev)
 	/* Setup mipi dsim */
 	sec_mipi_dsim_setup(&imx8mm_mipi_dsim_plat_data);
 	imx_mipi_dsi_bridge_attach(&adv7535_dev); /* attach adv7535 device */
-}
-
-void do_enable_mipi_led(struct display_info_t const *dev)
-{
-	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
-	gpio_direction_output(IMX_GPIO_NR(1, 8), 0);
-	mdelay(100);
-	gpio_direction_output(IMX_GPIO_NR(1, 8), 1);
-
-	/* enable the dispmix & mipi phy power domain */
-	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, DISPMIX, true, 0);
-	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, MIPI, true, 0);
-
-	/* Put lcdif out of reset */
-	disp_mix_bus_rstn_reset(imx8mm_mipi_dsim_plat_data.gpr_base, false);
-	disp_mix_lcdif_clks_enable(imx8mm_mipi_dsim_plat_data.gpr_base, true);
-
-	/* Setup mipi dsim */
-	sec_mipi_dsim_setup(&imx8mm_mipi_dsim_plat_data);
-
-	rm67191_init();
-	rm67191_dev.name = displays[1].mode.name;
-	imx_mipi_dsi_bridge_attach(&rm67191_dev); /* attach rm67191 device */
-}
-
-void board_quiesce_devices(void)
-{
-	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
-	gpio_direction_output(IMX_GPIO_NR(1, 8), 0);
 }
 
 struct display_info_t const displays[] = {{
@@ -786,28 +788,8 @@ struct display_info_t const displays[] = {{
 		.sync			= FB_SYNC_EXT,
 		.vmode			= FB_VMODE_NONINTERLACED
 
-} }, {
-	.bus = LCDIF_BASE_ADDR,
-	.addr = 0,
-	.pixfmt = 24,
-	.detect = NULL,
-	.enable	= do_enable_mipi_led,
-	.mode	= {
-		.name			= "RM67191_OLED",
-		.refresh		= 60,
-		.xres			= 1080,
-		.yres			= 1920,
-		.pixclock		= 7575, /* 132000000 */
-		.left_margin	= 34,
-		.right_margin	= 20,
-		.upper_margin	= 4,
-		.lower_margin	= 10,
-		.hsync_len		= 2,
-		.vsync_len		= 2,
-		.sync			= FB_SYNC_EXT,
-		.vmode			= FB_VMODE_NONINTERLACED
-
-} } };
+} },  
+};
 size_t display_count = ARRAY_SIZE(displays);
 #endif
 
