@@ -21,6 +21,13 @@
 #define CONFIG_CSF_SIZE			0x2000 /* 8K region */
 #endif
 
+/*
+#define BOOTLOADER_RBIDX_OFFSET        0x1E000
+#define CONFIG_IMX_TRUSTY_OS           1
+#define CONFIG_FSL_CAAM_KB             1
+*/
+
+#define CONF_SYS_BL_PART              0  // use user Partition 1=boot partition
 #define LOG_DDR4_TRAINING_LEVEL         0
 
 #define CONFIG_SPL_MAX_SIZE		(148 * 1024)
@@ -53,7 +60,7 @@
 
 #define CONFIG_SPL_ABORT_ON_RAW_IMAGE /* For RAW image gives a error info not panic */
 
-#undef CONFIG_DM_MMC
+/* #undef CONFIG_DM_MMC */
 #undef CONFIG_DM_PMIC
 #undef CONFIG_DM_PMIC_PFUZE100
 
@@ -190,9 +197,13 @@
 	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0"    \
 	"initrd_addr=0x43800000\0"		    \
 	"initrd_high=0xffffffffffffffff\0"          \
-	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
+	"emmc_ack=1\0"                              \
+	"emmc_dev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0"       \
+	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0"         \
 	"mmcpart="__stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
-	"partfdtandroid=8\0"                        \
+	"target_ubootdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0"\
+	"mmc_bootloader_partition="__stringify(CONF_SYS_BL_PART)"\0" \
+	"partfdtandroid=8\0"			    \
 	"ethspeed=100M\0"			    \
 	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0"  \
 	"mmcpartext4=1\0"                           \
