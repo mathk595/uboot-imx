@@ -23,9 +23,21 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define CONFIG_TARGET_TRIZEPS8MINI_V1R1		1
-//#define CONFIG_TARGET_TRIZEPS8MINI_V1R2		1	/* Also valid vor Myon II V1R1 */
-//#define CONFIG_TARGET_MYON2			1
+#ifdef CONFIG_TRIZEPS8MINI_TARGET_REV
+
+#if (CONFIG_TRIZEPS8MINI_TARGET_REV == 1)
+#define CONFIG_TARGET_TRIZEPS8MINI_V1R1	1
+#endif
+
+#if (CONFIG_TRIZEPS8MINI_TARGET_REV == 2)
+#define CONFIG_TARGET_TRIZEPS8MINI_V1R2	1
+#endif
+
+#if (CONFIG_TRIZEPS8MINI_TARGET_REV == 3)
+#define CONFIG_TARGET_MYON2		1
+#endif
+
+#endif
 
 #ifdef CONFIG_TARGET_TRIZEPS8MINI_V1R1
 #define	FPGA_CORE_VOLTAGE_1V3	1
@@ -36,9 +48,11 @@ extern struct dram_timing_info dram_timing_v1r2;
 
 void spl_dram_init(void)
 {
-#ifdef CONFIG_TARGET_TRIZEPS8MINI_V1R1	
+#ifdef CONFIG_TARGET_TRIZEPS8MINI_V1R1
+#warning("Compiling for TRIZEPS8MINI_V1R1");  
 	ddr_init(&dram_timing_v1r1);
 #else
+#warning("Compiling for TRIZEPS8MINI_V1R2/MYON2");	
 	// For Trizeps VIII Mini V1R2 and Myon II
 	ddr_init(&dram_timing_v1r2);
 #endif	
