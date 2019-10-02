@@ -30,8 +30,9 @@
 #include <mipi_dsi_panel.h>
 #include <asm/mach-imx/video.h>
 
+#include "../common/kuk_boards.h"
+
 #define TRIZEPS8_USE_RESET_OUT_AS_WATCHDOG_OUT	0	/* NXP i.MX8MQ EVK uses RESET_OUT as Watchdog Out */
-#define TRIZEPS8_CONTROL_RESET_OUT	0				/* 0: RESET_OUT is controlled by Kinetis MCU; 1: use when no Kinetis MCU */
 
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -97,6 +98,7 @@ static iomux_v3_cfg_t const wdog_pads[] = {
 
 int iomux_sai1_txd5, iopad_sai1_txd5;
 
+#if 0
 static void init_gpio4_17(int level)
 {
        unsigned int dir,reg;
@@ -110,6 +112,7 @@ static void init_gpio4_17(int level)
        GPIO4_DIR=dir;
 
 }
+#endif
 
 int board_early_init_f(void)
 {
@@ -134,11 +137,23 @@ int board_postclk_init(void)
 
 int dram_init(void)
 {
-	/* rom_pointer[1] contains the size of TEE occupies */
+	u64 ram_size;
+
+	switch( kuk_GetRAMSize())
+	{
+		case KUK_RAMSIZE_512MB:	ram_size = 	(512*1024*1024UL);	break;
+		case KUK_RAMSIZE_1GB:	ram_size = 	(1024*1024*1024UL);	break;
+		case KUK_RAMSIZE_2GB:	ram_size = 	(2048*1024*1024UL);	break;
+		case KUK_RAMSIZE_4GB:	ram_size = 	(4096*1024*1024UL);	break;
+		case KUK_RAMSIZE_8GB:	ram_size = 	(8192*1024*1024UL);	break;
+		default:				ram_size = PHYS_SDRAM_SIZE;		break;
+	}
+
 	if (rom_pointer[1])
-		gd->ram_size = PHYS_SDRAM_SIZE - rom_pointer[1];
-	else
-		gd->ram_size = PHYS_SDRAM_SIZE;
+		ram_size -= rom_pointer[1];
+
+	gd->ram_size = ram_size;
+
 
 	return 0;
 }
@@ -196,7 +211,7 @@ static iomux_v3_cfg_t const fec1_rst_pads[] = {
 static void setup_iomux_fec(void)
 {
 
-	printf("%s: reset fec\n", __func__);
+	// printf("%s: reset fec\n", __func__);
 	imx_iomux_v3_setup_multiple_pads(fec1_rst_pads, ARRAY_SIZE(fec1_rst_pads));
 	gpio_request(FEC_RST_PAD, "fec1_rst");
 	gpio_direction_output(FEC_RST_PAD, 0);
@@ -222,7 +237,7 @@ static int setup_fec(void)
 	struct iomuxc_gpr_base_regs *const iomuxc_gpr_regs
 		= (struct iomuxc_gpr_base_regs *) IOMUXC_GPR_BASE_ADDR;
 	/* Use 125M anatop REF_CLK1 for ENET1, not from external */
-	printf("%s: Enable FEC CLK\n", __func__);
+	// printf("%s: Enable FEC CLK\n", __func__);
 	clrsetbits_le32(&iomuxc_gpr_regs->gpr[1],IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_SHIFT, 0);
 	set_clk_enet(ENET_125MHZ);
 	setup_iomux_fec();
@@ -240,11 +255,11 @@ int ethernet_1GB(void)
   i = strncmp(s,"1G", 2);
   if( i == 0 )
   {
-      printf("ethspeed=1Gb\n");
+      printf("1Gb (ethspeed)\n");
       return(1);
   }else
   {
-      printf("ethspeed=100Mb\n");
+      printf("100Mb (ethspeed)\n");
       return(0);
   }  
 }
@@ -307,6 +322,11 @@ int board_phy_config(struct phy_device *phydev)
 {
   int j,i=100;
   
+  if ( kuk_GetPeripheral( KUK_PERIPHERAL_ETHERNET) == KUK_ETHERNET_NONE)
+  {
+	printf("none (disabled)\n");
+	return 0;
+  }
   /* enable rgmii rxc skew and phy mode select to RGMII copper */
 #if 0
   // Reset Phy....
@@ -330,32 +350,28 @@ int board_phy_config(struct phy_device *phydev)
     phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x000);    // Do not use 1GBit
     j  =  i & ~4;
     j &= ~2;    
-    printf("%s: Set Phy to 100MBit EEE=0x%04x->0x%04x\n", __func__, i, j);
+    //printf("%s: Set Phy to 100MBit EEE=0x%04x->0x%04x\n", __func__, i, j);
     ar8031_write_mmd_reg(phydev,MMD7,EEE_Advertisement,i);// Write MMD7 EEE no EEE mode
   }else
   {
-    printf("%s: Set Phy to 1GBit\n", __func__);        
+    //printf("%s: Set Phy to 1GBit\n", __func__);        
     phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x300);    // use 1GBit 
   }
 
   i= ar8031_read_mmd_reg( phydev,MMD3,EEE_Control);
   j= i & ~0x100;
-  printf("%s: Disable EEE Control    0x%04x->0x%04x\n", __func__, i, j);  
+  //printf("%s: Disable EEE Control    0x%04x->0x%04x\n", __func__, i, j);  
   i= ar8031_write_mmd_reg(phydev,MMD3,EEE_Control, j);  
 
   i  = phy_read(phydev, MDIO_DEVAD_NONE, 0x14);
-  j  = i & ~0xFDC;   /* Mask Retry Limit        */
-//j &= ~0x20;        /* No Smartspeed en        */
-  j |=  0x04;        /* Retry Limit = 1         */
-  j |=  0x02;        /* Bypass Smartspeed timer */
-  j  =  0x3C;  
-  printf("%s: Smart Speed Register   0x%04x->0x%04x\n", __func__, i, j);  
-
+  j  = 0x2C;  
+  //printf("%s: Smart Speed Register   0x%04x->0x%04x\n", __func__, i, j);  
   phy_write(phydev, MDIO_DEVAD_NONE, 0x14, j);
 
   i= ar8031_read_mmd_reg(phydev,MMD7,SGMII_Control_Register);
   j= ( i & 0xfff) | VDIFF_900mV;
-  printf("%s: SGMII_Control_Register 0x%04x->0x%04x\n", __func__, i, j);  
+
+  //printf("%s: SGMII_Control_Register 0x%04x->0x%04x\n", __func__, i, j);  
   ar8031_write_mmd_reg(phydev,MMD7,SGMII_Control_Register, j);// Write MMD7 8011 900mV    
   phy_write(phydev, MDIO_DEVAD_NONE, 0x0,  0x3200);   // 100MBit restart AN
 
@@ -370,24 +386,29 @@ void mx8qm_pcie_init(void);
 
 static void setup_pcie(void)
 {
-         char *s;
-	 int  internal_wifi=0, pcie_ext=0;
+    char *s;
+	int  internal_wifi=0, pcie_ext=0;
 
-	 s = env_get("pcie");
-	 if( s )
-	 {	     
-	   internal_wifi = (strncmp(s,"wifionboard", 2) == 0) ? 1:0;
-	   pcie_ext      = (strncmp(s,"extern",      2) == 0) ? 1:0;
-	   printk("%s: Environment pcie=%s ", __func__, s);
-	 }else
-	 {	       
-	   printk("%s: Environment variable pcie not set. Skip Init PCIe gpios\n", __func__);
-	   internal_wifi=1;	   
-	 }
-	 
+	s = env_get("pcie");
+	if( s )
+	{	     
+		internal_wifi = (strncmp(s,"wifionboard", 2) == 0) ? 1:0;
+		pcie_ext      = (strncmp(s,"extern",      2) == 0) ? 1:0;
+		//printk("%s: Environment pcie=%s ", __func__, s);
+	}else
+	{	       
+		//printk("%s: Environment variable pcie not set. Skip Init PCIe gpios\n", __func__);
+		internal_wifi = 1;
+	}
+	if ( kuk_GetPeripheral( KUK_PERIPHERAL_WIRELESS) == KUK_WIRELESS_NONE)
+ 	{
+		internal_wifi = 0;
+ 	}
+
 	 if( internal_wifi )
 	 {
-	   printk("> Setup PCIe Gpios for onboard Wifi Card\n");	   
+	   //printk("> Setup PCIe Gpios for onboard Wifi Card\n");	   
+	   printk("PCIE:  Configure for onboard Wifi Card\n");
 	   imx_iomux_v3_setup_multiple_pads(pcie_wifi_pads, ARRAY_SIZE(pcie_wifi_pads));
 	   gpio_request(PCIE_CLKREQ,                  "PCIE_CLKREQ");
 	   gpio_request(PCIE_WL_POWERDOWN,            "PCIE_WL_POWERDOWN");
@@ -413,7 +434,8 @@ static void setup_pcie(void)
 	 }else
 	 if( pcie_ext )	  
 	 {
-	   printk("> Setup PCIe Gpios for external PCIe Slot\n");	   	   
+	   //printk("> Setup PCIe Gpios for external PCIe Slot\n");	   	   
+	   printk("PCIE:  Configure for external PCIe Slot\n");
 	   imx_iomux_v3_setup_multiple_pads(pcie_ext_pads, ARRAY_SIZE(pcie_ext_pads));
 	   gpio_request(PCIE_WAKE_EXT,                      "PCIE_WAKE_EXT");
 	   gpio_request(PCIE_RESET_EXT,                     "PCIE_RESET_EXT");
@@ -439,11 +461,16 @@ void pci_init_board(void)
   
 int board_init(void)
 {
+	char article[24];
   //    init_gpio4_17(0);  
   //    printf("GPIO4.17 mux 0x%x, GPIO4.17 pad 0x%x \n", iomux_sai1_txd5, iopad_sai1_txd5);
-  
+	kuk_GetArticleNo( &article[0], 24);
+	printf("Modul: %s\n", article);  
 #ifdef CONFIG_FEC_MXC
-	setup_fec();
+	if ( kuk_GetPeripheral( KUK_PERIPHERAL_ETHERNET) != KUK_ETHERNET_NONE)
+	{		
+		setup_fec();
+	}
 #endif
 	setup_pcie(); /* environment not read here */
 	return 0;
@@ -465,7 +492,7 @@ int board_late_init(void)
 #ifdef CONFIG_ENV_IS_IN_MMC
 	board_late_mmc_env_init();
 #endif
-  setup_pcie();
+  	setup_pcie();
 	return 0;
 }
 
@@ -654,18 +681,19 @@ static int adv7535_init(void)
 
 	ret = dm_i2c_probe(bus, ADV7535_MAIN, 0, &main_dev);
 	if (ret) {
-		printf("%s: Can't find device id=0x%x, on bus %d\n",
-			__func__, ADV7535_MAIN, i2c_bus);
+		//printf("%s: Can't find device id=0x%x, on bus %d\n",
+		//	__func__, ADV7535_MAIN, i2c_bus);
 		return 0;
 	}
 
 	ret = dm_i2c_probe(bus, ADV7535_DSI_CEC, 0, &cec_dev);
 	if (ret) {
-		printf("%s: Can't find device id=0x%x, on bus %d\n",
-			__func__, ADV7535_MAIN, i2c_bus);
+		//printf("%s: Can't find device id=0x%x, on bus %d\n",
+		//	__func__, ADV7535_MAIN, i2c_bus);
 		return 0;
 	}
 
+	printf("HDMI:  ADV7535 found\n");
 	adv7535_i2c_reg_read(main_dev, 0x00, &val);
 	if ( val != 0x14) {
 		printf("Chip revision: 0x%x (expected: 0x14)\n", val);

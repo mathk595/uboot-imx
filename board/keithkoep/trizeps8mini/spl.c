@@ -23,39 +23,26 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifdef CONFIG_TRIZEPS8MINI_TARGET_REV
-
-#if (CONFIG_TRIZEPS8MINI_TARGET_REV == 1)
-#define CONFIG_TARGET_TRIZEPS8MINI_V1R1	1
-#endif
-
-#if (CONFIG_TRIZEPS8MINI_TARGET_REV == 2)
-#define CONFIG_TARGET_TRIZEPS8MINI_V1R2	1
-#endif
-
-#if (CONFIG_TRIZEPS8MINI_TARGET_REV == 3)
-#define CONFIG_TARGET_MYON2		1
-#endif
-
-#endif
-
-#ifdef CONFIG_TARGET_TRIZEPS8MINI_V1R1
-#define	FPGA_CORE_VOLTAGE_1V3	1
-#endif
+#include "../common/kuk_boards.h"
 
 extern struct dram_timing_info dram_timing_v1r1;
 extern struct dram_timing_info dram_timing_v1r2;
 
 void spl_dram_init(void)
 {
-#ifdef CONFIG_TARGET_TRIZEPS8MINI_V1R1
-#warning("Compiling for TRIZEPS8MINI_V1R1");  
-	ddr_init(&dram_timing_v1r1);
-#else
-#warning("Compiling for TRIZEPS8MINI_V1R2/MYON2");	
-	// For Trizeps VIII Mini V1R2 and Myon II
-	ddr_init(&dram_timing_v1r2);
-#endif	
+	int module;
+	int version;
+
+	module	= kuk_GetModule();
+	version	= kuk_GetPCBrevision();
+
+	if (( module == KUK_MODULE_TRIZEPS8MINI)&&( version == KUK_PCBREV_V1R1))
+	{
+		ddr_init(&dram_timing_v1r1);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH B/A
+	}else
+	{
+		ddr_init(&dram_timing_v1r2);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+	}	
 }
 
 #define I2C_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PE)
@@ -102,12 +89,10 @@ static iomux_v3_cfg_t const usdhc2_pads[] = {
 	IMX8MM_PAD_SD2_DATA3_USDHC2_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 };
 
-#ifdef CONFIG_TARGET_MYON2
 #define RST_PAD IMX_GPIO_NR(3, 14)
 static iomux_v3_cfg_t const reset_out_pads[] = {
 	IMX8MM_PAD_NAND_DQS_GPIO3_IO14 | MUX_PAD_CTRL((PAD_CTL_HYS | PAD_CTL_DSE1)) 
 };
-#endif
 
 /*
  * The evk board uses DAT3 to detect CD card plugin,
@@ -178,6 +163,12 @@ int power_init_board(void)
 {
 	struct pmic *p;
 	int ret;
+	int module;
+	//int version;
+	int iovolt;
+	module	= kuk_GetModule();
+	//version = kuk_GetPCBrevision(); 
+	iovolt	= kuk_GetPeripheral( KUK_OTP_IOVOLTAGE);
 
 	ret = power_bd71837_init(I2C_PMIC);
 	if (ret)
@@ -203,25 +194,45 @@ int power_init_board(void)
 	pmic_reg_write(p, BD71837_BUCK8_VOLT, 0x28);
 #endif
 
-	/* Set VDD_FPGA_MIPI to 2.5V */
-	pmic_reg_write(p, BD71837_LDO5_VOLT, 0xC7);
 
-#ifdef FPGA_CORE_VOLTAGE_1V3
-	/* Set FPGA-Core-Voltage to 1.3V (default 1.2V) */
-	pmic_reg_write(p, BD71837_LDO6_VOLT, 0xC4);
-#endif
+	if ( module == KUK_MODULE_TRIZEPS8MINI)
+	{	// Trizeps
+		/* Set VDD_FPGA_MIPI to 2.5V */
+		pmic_reg_write(p, BD71837_LDO5_VOLT, 0xC7);
+
+		//if ( version == KUK_PCBREV_V1R1) need to check if still needed for V1R2; keep this line uncommented until verified
+		{	
+			/* Set FPGA-Core-Voltage to 1.3V (default 1.2V) */
+			pmic_reg_write(p, BD71837_LDO6_VOLT, 0xC4);
+		}
+	}else
+	{	// Myon
+		switch( iovolt)
+		{			
+			case KUK_IOVOLTAGE_3V3:
+				pmic_reg_write(p, BD71837_LDO5_VOLT, 0xCF);	// 3.3V
+				break;
+			case KUK_IOVOLTAGE_CUSTOM:
+				pmic_reg_write(p, BD71837_LDO5_VOLT, 0xC0);	// 1.8V: may be modified by customer
+				break;
+			case KUK_IOVOLTAGE_1V8:
+			default:
+				pmic_reg_write(p, BD71837_LDO5_VOLT, 0xC0);	// 1.8V
+				break;
+		}
+	}
 
 	/* lock the PMIC regs */
 	pmic_reg_write(p, BD71837_REGLOCK, 0x11);
 
-#ifdef CONFIG_TARGET_MYON2
-	/* Set Reset-out */
-	imx_iomux_v3_setup_multiple_pads(
-				reset_out_pads, ARRAY_SIZE(reset_out_pads));
-	gpio_request(RST_PAD, "reset_out");
-	gpio_direction_output(RST_PAD, 1);
-#endif
-
+	if (( module == KUK_MODULE_MYON2)||( module == KUK_MODULE_MYON2NANO))
+	{
+		/* Set Reset-out */
+		imx_iomux_v3_setup_multiple_pads(
+					reset_out_pads, ARRAY_SIZE(reset_out_pads));
+		gpio_request(RST_PAD, "reset_out");
+		gpio_direction_output(RST_PAD, 1);
+	}
 	return 0;
 }
 #endif

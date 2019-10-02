@@ -89,4 +89,6 @@ ifndef CONFIG_SPL_BUILD
 obj-$(CONFIG_USB_TCPC) += tcpc.o
 endif
 
+obj-y			+= kuk_boards.o
+
 endif
