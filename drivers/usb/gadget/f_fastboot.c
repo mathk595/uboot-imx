@@ -817,8 +817,15 @@ static int _fastboot_setup_dev(int *switched)
 	char *fastboot_env;
 	struct fastboot_device_info devinfo;;
 	fastboot_env = env_get("fastboot_dev");
+<<<<<<< HEAD
 
 	if (fastboot_env) {
+=======
+	if (fastboot_env)
+	{	  
+	    //printf("_fastboot_setup_dev[%s]\n", fastboot_env);
+ 
+>>>>>>> 7d608a117e... Modified printf for cleaner output.
 		if (!strcmp(fastboot_env, "sata")) {
 			devinfo.type = DEV_SATA;
 			devinfo.dev_id = 0;
