@@ -46,3 +46,21 @@ config USB_TCPC
 	default n
 	help
 	  Enable USB type-c port controller (TCPC) driver
+
+
+
+config ENGINEERINGSAMPLE_MYON2
+       bool "Select REV1_MYON2, if no rev is set, OTP will select targetboard info"
+       default n
+
+config ENGINEERINGSAMPLE_TRIZEPS8MINI
+       bool "Select REV1_MTRIZEPS8MINI, if no rev is set, OTP will select targetboard info"
+       default n
+
+config MYON2
+       bool "Select MYON2, if no rev is set, OTP will select targetboard info"
+       default n
+
+config TRIZEPS8MINI
+       bool "Select TRIZEPS8MINI, if no rev is set, OTP will select targetboard info"
+       default n

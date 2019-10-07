@@ -9,13 +9,6 @@ config SYS_VENDOR
 config SYS_CONFIG_NAME
 	default "trizeps8mini"
 
-config TRIZEPS8MINI_TARGET_REV
-       int "revision target-type for ddr init"
-       default 1
-       help
-       set 1 for Trizeps4mini V1R1
-       set 2 for Trizeps4mini V1R2/Myon2       
-
 source "board/keithkoep/common/Kconfig"
 
 endif
