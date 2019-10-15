@@ -461,11 +461,14 @@ void pci_init_board(void)
   
 int board_init(void)
 {
-	char article[24];
+	char text[256];
   //    init_gpio4_17(0);  
   //    printf("GPIO4.17 mux 0x%x, GPIO4.17 pad 0x%x \n", iomux_sai1_txd5, iopad_sai1_txd5);
-	kuk_GetArticleNo( &article[0], 24);
-	printf("Modul: %s\n", article);  
+	kuk_GetArticleNo( &text[0], 24);
+	printf("Modul: %s\n", text);  
+	kuk_GetDescription( &text[0], sizeof( text));
+	printf("%s\n", text);  
+
 #ifdef CONFIG_FEC_MXC
 	if ( kuk_GetPeripheral( KUK_PERIPHERAL_ETHERNET) != KUK_ETHERNET_NONE)
 	{		

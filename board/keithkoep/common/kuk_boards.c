@@ -952,5 +952,194 @@ int kuk_GetArticleNo( char *pArticle, int maxsize )
     return ret;
 }
 
+const char* cModuleName[] = {
+    "Unknown", "Trizeps VIII", "Trizeps VIII Mini", "Trizeps VIII Nano", "Myon II", "Myon II Nano"
+};
+const char* cRAMsize[] = {
+    "Unknown", "512MB","1GB","2GB"
+};
+const char* cStore[] = {
+    "?", "uSD-card", "eMMC", "4GB eMMC", "8GB eMMC", "16GB eMMC", "32GB eMMC"
+};
+int kuk_GetDescription( char *pDescription, int maxsize )
+{
+    const char industrial[] = "industrial";
+    const char consumer[] = "consumer";
+    int module;
+    int ramsize;
+    int pcbrev;
+    unsigned int speed; 
+    unsigned int cpu; 
+    int cnt = 0;
+    char str_ramsize[8];
+    char str_cpu[48];
+    char str_rev[8];
+    int store;
+
+    module  = kuk_GetModule();
+    ramsize = kuk_GetRAMSize(); 
+    pcbrev  = kuk_GetPCBrevision();
+    speed   = get_cpu_speed_grade_hz()/1000000;
+    cpu     = get_cpu_type(); 
+
+    switch ( kuk_GetBootStorage())
+    {
+        case KUK_BOOTSTORAGE_SDCARD:    store = 1;  break;
+        case KUK_BOOTSTORAGE_EMMCxGB:   store = 2;  break;
+        case KUK_BOOTSTORAGE_EMMC4GB:   store = 3;  break;
+        case KUK_BOOTSTORAGE_EMMC8GB:   store = 4;  break;
+        case KUK_BOOTSTORAGE_EMMC16GB:  store = 5;  break;
+        case KUK_BOOTSTORAGE_EMMC32GB:  store = 6;  break;
+        default:                        store = 0;  break;
+    }
+
+    if (( pcbrev >= KUK_PCBREV_V1R1)&&( pcbrev <= KUK_PCBREV_V1R3))
+    {
+        snprintf(&str_rev[0], sizeof(str_rev), "V1R%d", 1 + pcbrev - KUK_PCBREV_V1R1);
+    }else
+    {
+        str_rev[0] = 0;
+    }
+    
+    if ( ramsize == KUK_RAMSIZE_512MB)
+    {
+        strcpy( &str_ramsize[0], "512MB");
+    }else
+    if (( ramsize >= KUK_RAMSIZE_1GB)&&( ramsize <= KUK_RAMSIZE_8GB))
+    {
+        snprintf(&str_ramsize[0], sizeof(str_ramsize), "%dGB", ramsize);
+    }else
+    {
+        strcpy( &str_ramsize[0], "? MB");
+    }
+
+    if ( module == KUK_MODULE_TRIZEPS8)
+    {
+        const char* grade;        
+        if ( speed <= 1300)
+        {
+            grade = industrial;
+        }else
+        {
+            grade = consumer;
+        }
+                
+        switch( cpu)
+        {
+            case MXC_CPU_IMX8MD:    snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Dual %dMHz (%s)"        , speed, grade);  break;
+            case MXC_CPU_IMX8MQL:   snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Dual-Lite %dMHz (%s)"   , speed, grade);  break;
+            case MXC_CPU_IMX8MQ:    snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Quad %dMHz (%s)"        , speed, grade);  break;
+            default:                snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M %dMHz (%s)"             , speed, grade);  break;
+        }
+    }else
+    if (( module == KUK_MODULE_TRIZEPS8MINI)||( module == KUK_MODULE_MYON2))
+    {
+        const char* grade;
+        if ( speed <= 1600)
+        {
+            grade = industrial;
+        }else
+        {
+            grade = consumer;
+        }
+        switch( cpu)
+        {
+            case MXC_CPU_IMX8MMSL:  snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Mini Solo-Lite %dMHz (%s)"  , speed, grade);  break;
+            case MXC_CPU_IMX8MMS:   snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Mini Solo %dMHz (%s)"       , speed, grade);  break;
+            case MXC_CPU_IMX8MMDL:  snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Mini Dual-Lite %dMHz (%s)"  , speed, grade);  break;
+            case MXC_CPU_IMX8MMD:   snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Mini Dual %dMHz (%s)"       , speed, grade);  break;
+            case MXC_CPU_IMX8MML:   snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Mini Quad-Lite %dMHz (%s)"  , speed, grade);  break;
+            case MXC_CPU_IMX8MM:    snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Mini Quad %dMHz (%s)"       , speed, grade);  break;
+            default:                snprintf(&str_cpu[0], sizeof(str_cpu), "i.MX 8M Mini %dMHz (%s)"            , speed, grade);  break;
+        }
+    }else
+    if (( module == KUK_MODULE_TRIZEPS8NANO)||( module == KUK_MODULE_MYON2NANO))
+    {
+        snprintf( &str_cpu[0], sizeof(str_cpu), "i.MX 8M Nano %dMHz", speed );
+    }
+
+
+    cnt += snprintf(&pDescription[cnt], maxsize - cnt, "This is a Keith & Koep GmbH  %s %s running a %s with %s,%dbit RAM and booting from %s.\n",
+            cModuleName[ module], str_rev, str_cpu, str_ramsize, kuk_GetRAMWidth(), cStore[ store]
+        );
+        
+    switch( kuk_GetTemperatureRange())
+    {
+        case KUK_TEMP_EXTENDED_m25_85:      cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Extended Temperature-Range\n"); break;
+        case KUK_TEMP_INDUSTRIAL_m40_85:    cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Industrial Temperature-Range\n"); break;
+        case KUK_TEMP_COMMERCIAL_0_70:      cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Commercial Temperature-Range\n"); break;
+        default:                            
+            break;
+    }
+
+    if (( module == KUK_MODULE_TRIZEPS8)||( module == KUK_MODULE_TRIZEPS8MINI)||( module == KUK_MODULE_TRIZEPS8NANO))
+    {
+        switch( kuk_GetPeripheral( KUK_PERIPHERAL_MCU))
+        {
+            case KUK_MCU_NONE:              cnt += snprintf(&pDescription[cnt], maxsize - cnt, "No MCU\n");    break; 
+            case KUK_MCU_MKV10Z32VFM7:      cnt += snprintf(&pDescription[cnt], maxsize - cnt, "MCU MKV10Z32VFM7\n");    break; 
+            case KUK_MCU_MKV11Z64VFM7:      cnt += snprintf(&pDescription[cnt], maxsize - cnt, "MCU MKV11Z64VFM7\n");    break; 
+            default:    break;
+        }
+        switch ( kuk_GetPeripheral( KUK_PERIPHERAL_LVDS))
+        {
+            case KUK_LVDS_NONE:             cnt += snprintf(&pDescription[cnt], maxsize - cnt, "No LVDS\n");  break;
+            case KUK_LVDS_SN65DSI83:        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "LVDS (single)\n");  break;
+            case KUK_LVDS_SN65DSI85:        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Dual-LVDS\n"); break;
+            default:    break;
+        }
+        switch ( kuk_GetPeripheral( KUK_PERIPHERAL_FPGA))
+        {
+            case KUK_FPGA_NONE:             cnt += snprintf(&pDescription[cnt], maxsize - cnt, "No FPGA\n");    break;
+            case KUK_FPGA_LCMXO3LF_1300E:   cnt += snprintf(&pDescription[cnt], maxsize - cnt, "FPGA LCMXO3LF 1300E\n");  break;
+            case KUK_FPGA_LCMXO3LF_2100E:   cnt += snprintf(&pDescription[cnt], maxsize - cnt, "FPGA LCMXO3LF 2100E\n");  break;
+            case KUK_FPGA_LCMXO3LF_4300E:   cnt += snprintf(&pDescription[cnt], maxsize - cnt, "FPGA LCMXO3LF 4300E\n");  break;
+            case KUK_FPGA_LCMXO3L_1300E:    cnt += snprintf(&pDescription[cnt], maxsize - cnt, "FPGA LCMXO3L 1300E\n");  break;
+            case KUK_FPGA_LCMXO3L_2100E:    cnt += snprintf(&pDescription[cnt], maxsize - cnt, "FPGA LCMXO3L 2100E\n");  break;
+            case KUK_FPGA_LCMXO3L_4300E:    cnt += snprintf(&pDescription[cnt], maxsize - cnt, "FPGA LCMXO3L 4300E\n");  break;
+            default:    break;
+        }
+        switch(kuk_GetPeripheral( KUK_PERIPHERAL_ETHERNET))
+        {
+            case KUK_ETHERNET_NONE:         cnt += snprintf(&pDescription[cnt], maxsize - cnt, "No Ethernet\n");    break; 
+            case KUK_ETHERNET_AR8031:       cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Ethernet AR8031\n");    break; 
+            default:    break;
+        }
+        switch( kuk_GetPeripheral( KUK_PERIPHERAL_WIRELESS))
+        {
+            case KUK_WIRELESS_NONE:             cnt += snprintf(&pDescription[cnt], maxsize - cnt, "No Wireless\n");    break;
+            case KUK_WIRELESS_LAIRD_SU60:       cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Wireless LAIRD SU60\n");  break;
+            case KUK_WIRELESS_LAIRD_ST60:       cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Wireless LAIRD ST60\n");  break;
+            case KUK_WIRELESS_HD_SPB228:        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Wireless HD SPB228\n");  break;
+            case KUK_WIRELESS_SILEX_SXPCEAC2:   cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Wireless Silex SX-PCEAC2\n");  break;
+            default:    break;
+        }        
+    }else
+    if (( module == KUK_MODULE_MYON2)||( module == KUK_MODULE_MYON2NANO))
+    {
+        switch ( kuk_GetPeripheral( KUK_PERIPHERAL_LVDS))
+        {
+            case KUK_LVDS_NONE:             cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Mipi\n");  break;
+            case KUK_LVDS_SN65DSI83:        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "LVDS\n");  break;
+            default:    break;
+        }
+        switch( kuk_GetPeripheral( KUK_PERIPHERAL_IOVOLTAGE))
+        {
+            case KUK_IOVOLTAGE_1V8:         cnt += snprintf(&pDescription[cnt], maxsize - cnt, "IO-Voltage 1.8V\n");  break;
+            case KUK_IOVOLTAGE_3V3:         cnt += snprintf(&pDescription[cnt], maxsize - cnt, "IO-Voltage 3.3V\n");  break;
+            default:    break;
+        }        
+    }
+    
+    switch( kuk_GetPeripheral( KUK_PERIPHERAL_AUDIO))
+    {
+        case KUK_AUDIO_NONE:        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "No Audio\n");  break;
+        case KUK_AUDIO_WM8983:      cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Audio WM8983\n");  break;
+        case KUK_AUDIO_WM8978:      cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Audio WM8978\n");  break;
+        default:    break;
+    }
+
+    return cnt;
+}
 
 

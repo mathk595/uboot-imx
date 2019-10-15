@@ -113,7 +113,7 @@ enum KUK_OTP {
 int kuk_GetOTP( int key, int defaultval);
 
 enum KUK_MODULE_TYPE {
-    KUK_MODULE_UNKNOWN,
+    KUK_MODULE_UNKNOWN = 0,
     KUK_MODULE_TRIZEPS8,
     KUK_MODULE_TRIZEPS8MINI,
     KUK_MODULE_TRIZEPS8NANO,
@@ -231,3 +231,4 @@ enum KUK_BOOTSTORAGE {
 int kukt_GetBootStorage( void);
 
 int kuk_GetArticleNo( char *pArticle, int maxsize );
+int kuk_GetDescription( char *pDescription, int maxsize );
