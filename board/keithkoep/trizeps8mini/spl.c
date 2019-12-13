@@ -26,22 +26,45 @@ DECLARE_GLOBAL_DATA_PTR;
 #include "../common/kuk_boards.h"
 
 extern struct dram_timing_info dram_timing_v1r1;
-extern struct dram_timing_info dram_timing_v1r2;
+extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E304HB;
+extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E3S4HM;
+extern struct dram_timing_info dram_timing_v1r2_4GB_K4FBE3D4HM;
 
 void spl_dram_init(void)
 {
 	int module;
 	int version;
+	int ramsize;
+	int ramskew;
 
 	module	= kuk_GetModule();
 	version	= kuk_GetPCBrevision();
+	ramsize = kuk_GetRAMSize();
+	ramskew = kuk_GetRAMSkew();
 
 	if (( module == KUK_MODULE_TRIZEPS8MINI)&&( version == KUK_PCBREV_V1R1))
 	{
 		ddr_init(&dram_timing_v1r1);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH B/A
 	}else
 	{
-		ddr_init(&dram_timing_v1r2);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+		switch( ramsize)
+		{
+			case KUK_RAMSIZE_2GB:
+				if ( ramskew == 0)
+				{	// Dual-Die 2ch with 2cs
+					ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+				}else
+				{	// Mono-Die 2ch with 1cs
+					ddr_init(&dram_timing_v1r2_2GB_K4F6E3S4HM);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B										
+				}												
+				break;
+			case KUK_RAMSIZE_4GB:				
+				ddr_init(&dram_timing_v1r2_4GB_K4FBE3D4HM);	// 4GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+				break;
+			default:
+				ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+				break;
+		}
 	}	
 }
 

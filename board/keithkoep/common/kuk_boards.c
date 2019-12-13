@@ -16,9 +16,10 @@
 #define FUSE14_RAM(x)           ((x & 0x0F000000)>>24)   
 #define FUSE14_RAM_UNDEF        0x0
 #define FUSE14_RAM_1GB          0x1
-#define FUSE14_RAM_2GB          0x2
-#define FUSE14_RAM_4GB          0x4
-#define FUSE14_RAM_8GB          0x8
+#define FUSE14_RAM_2GB          0x2 // Mono-Die
+#define FUSE14_RAM_4GB          0x4 // Dual-Die
+#define FUSE14_RAM_8GB          0x8 // Dual-Die
+#define FUSE14_RAM_2GB_DUALDIE  0xA // reserve/not use for now: 2GB Dual-Die; Engineering Samples without burned fuse used it.
 #define FUSE14_RAM_512MB        0xE
 #define FUSE14_RAM_AUTODETECT   0xF
 
@@ -48,9 +49,12 @@ int kuk_GetOTP( int key, int defaultval)
     |    |    |    |  ..|   Extra   (0x...0....=undef, 0x...1....= 1V8  , 0x...2....= 3V3   , 0x...3....= Custom)
 
     i.e. 
-    Trizeps VIII Mini V1R1 with 2GB RAM:    fuse prog 14 0 0x12000000
-    Trizeps VIII Mini V1R2 with 2GB RAM:    fuse prog 14 0 0x12100000        
-    Myon II V1R1 with 2GB RAM:              fuse prog 14 0 0x22000000
+    Trizeps VIII Mini V1R1 with 2GB RAM:                        fuse prog 14 0 0x1A000000
+    Trizeps VIII Mini V1R2 with 2GB RAM (Dual-Die K4F6E304HB):  fuse prog 14 0 0x1A100000   // Engineering sample, typ. no fuse set
+    Trizeps VIII Mini V1R2 with 2GB RAM (Mono-Die K4F6E3S4HM):  fuse prog 14 0 0x12100000        
+    Trizeps VIII Mini V1R2 with 4GB RAM (Dual-Die K4FBE3D4HM):  fuse prog 14 0 0x14100000        
+    Myon II V1R1 with 2GB RAM (Dual-Die K4F6E304HB):            fuse prog 14 0 0x2A000000   // Engineering sample, typ. no fuse set
+    Myon II V1R1 with 2GB RAM (Mono-Die K4F6E3S4HM):            fuse prog 14 0 0x22000000
 
     // For now do not fuse other options:
     .. LVDS    
@@ -155,6 +159,7 @@ int kuk_GetOTP( int key, int defaultval)
                     ret = KUK_RAMSIZE_1GB;
                     break;
                 case FUSE14_RAM_2GB:
+                case FUSE14_RAM_2GB_DUALDIE:
                     ret = KUK_RAMSIZE_2GB;
                     break;
                 case FUSE14_RAM_4GB:
@@ -165,6 +170,23 @@ int kuk_GetOTP( int key, int defaultval)
                     break;
                 case FUSE14_RAM_AUTODETECT:
                     ret = KUK_RAMSIZE_AUTODETECT;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    if ( key == KUK_OTP_RAMSKEW)
+    {
+        if ( fuse14valid)
+        {
+            switch( FUSE14_RAM(fuse14))
+            {
+                case FUSE14_RAM_2GB:
+                    ret = 1;
+                    break;
+                case FUSE14_RAM_2GB_DUALDIE:
+                    ret = 0;
                     break;
                 default:
                     break;
@@ -318,6 +340,18 @@ int kuk_GetRAMSize( void)
     size = FORCE__KUK_RAMSIZE;
 #endif
     return size;
+}
+
+int kuk_GetRAMSkew( void)
+{ 
+    int skew = ASSUME__KUK_RAMSKEW;
+
+    skew = kuk_GetOTP( KUK_OTP_RAMSKEW, skew);
+
+#ifdef FORCE__KUK_RAMSKEW
+    skew = FORCE__KUK_RAMSKEW;
+#endif
+    return skew;
 }
 
 int kuk_GetPCBrevision( void)

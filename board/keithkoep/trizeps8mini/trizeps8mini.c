@@ -144,7 +144,11 @@ int dram_init(void)
 		case KUK_RAMSIZE_512MB:	ram_size = 	(512*1024*1024UL);	break;
 		case KUK_RAMSIZE_1GB:	ram_size = 	(1024*1024*1024UL);	break;
 		case KUK_RAMSIZE_2GB:	ram_size = 	(2048*1024*1024UL);	break;
-		case KUK_RAMSIZE_4GB:	ram_size = 	(4096*1024*1024UL);	break;
+#ifdef CONFIG_KUK_CUTRAMSIZE_3GB		
+		case KUK_RAMSIZE_4GB:	ram_size = 	(3072*1024*1024UL); break; //(4096*1024*1024UL);	break;
+#else
+		case KUK_RAMSIZE_4GB:	ram_size = 	(4096*1024*1024UL); break; //(4096*1024*1024UL);	break;
+#endif		
 		case KUK_RAMSIZE_8GB:	ram_size = 	(8192*1024*1024UL);	break;
 		default:				ram_size = PHYS_SDRAM_SIZE;		break;
 	}
@@ -156,6 +160,14 @@ int dram_init(void)
 
 
 	return 0;
+}
+
+ulong board_get_usable_ram_top(ulong total_size)
+{
+	if(gd->ram_top > 0x100000000)
+    	gd->ram_top = 0x100000000;
+
+	return gd->ram_top;
 }
 
 #ifdef CONFIG_OF_BOARD_SETUP
