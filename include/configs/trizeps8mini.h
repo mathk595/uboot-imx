@@ -197,6 +197,8 @@
 	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0"    \
 	"initrd_addr=0x43800000\0"		    \
 	"initrd_high=0xffffffffffffffff\0"          \
+	"uart4-access=both\0"                       \
+	"uart2=acess=both\0"                        \
 	"emmc_ack=1\0"                              \
 	"emmc_dev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0"       \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0"         \

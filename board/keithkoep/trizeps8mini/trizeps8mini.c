@@ -85,6 +85,15 @@ static iomux_v3_cfg_t const usb_pads[] = {
 	IMX8MM_PAD_GPIO1_IO12_GPIO1_IO12 | MUX_PAD_CTRL(GPIO_PAD_CTRL),	
 };
 
+#define CAMERA_PWDN IMX_GPIO_NR(1,3)
+#define CAMERA_nRST IMX_GPIO_NR(1,6)
+
+static iomux_v3_cfg_t const camera_pads[] = {
+        IMX8MM_PAD_GPIO1_IO03_GPIO1_IO3  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam Pwdn
+	IMX8MM_PAD_GPIO1_IO06_GPIO1_IO6  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam nRST
+};
+
+
 #if TRIZEPS8_USE_RESET_OUT_AS_WATCHDOG_OUT
 static iomux_v3_cfg_t const wdog_pads[] = {
 	IMX8MM_PAD_GPIO1_IO02_WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
@@ -114,6 +123,25 @@ static void init_gpio4_17(int level)
 }
 #endif
 
+static void init_camera_ov5640(void)
+{
+        printf("Init Camera Pins SODIMM 123,125 as GPIO \n");  
+	imx_iomux_v3_setup_multiple_pads(camera_pads, ARRAY_SIZE(camera_pads));
+	gpio_request(CAMERA_PWDN, "camera_pwdn");
+	gpio_direction_output(CAMERA_PWDN, 1);
+	gpio_request(CAMERA_nRST, "camera_nrst");
+	gpio_direction_output(CAMERA_nRST, 1);
+	gpio_direction_output(CAMERA_nRST, 0);
+	gpio_direction_output(CAMERA_nRST, 1);
+	gpio_direction_output(CAMERA_PWDN, 0);	
+	gpio_direction_output(CAMERA_nRST, 1);
+	gpio_direction_output(CAMERA_nRST, 0);
+	udelay(5000);
+	gpio_direction_output(CAMERA_nRST, 1);
+	
+}
+
+
 int board_early_init_f(void)
 {
   //    init_gpio4_17(0);  
@@ -122,6 +150,7 @@ int board_early_init_f(void)
 	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
 	set_wdog_reset(wdog);
 #endif
+
 	imx_iomux_v3_setup_multiple_pads(usb_pads, ARRAY_SIZE(usb_pads));
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
 	return 0;
@@ -465,6 +494,42 @@ static void setup_pcie(void)
 	 }
 }
 
+/* Enable Uart4/Uart2 pre-set in imx8mm_bl31_setup.c bl31_early_platform_setup2() */
+
+void setup_periph2mcu(void)
+{
+        char *s;  
+        volatile unsigned long uart4m4 = 0xff;
+        volatile unsigned long uart2m4 = 0xff;	
+
+	s = env_get("uart4-access");
+	if( s )
+	{	     
+	  if( strncmp(s,"both", 2) == 0) uart4m4=0xff;
+	  if( strncmp(s,"a53",  2) == 0) uart4m4=0xf3;
+	  if( strncmp(s,"m4",   2) == 0) uart4m4=0xfc;	  	  
+	  *(volatile unsigned long *)0x303D0518=uart4m4;	
+	}else
+	{	       
+	  *(volatile unsigned long *)0x303D0518=uart4m4;
+	}
+	
+	s = env_get("uart2-access");
+	if( s )
+	{	     
+	  if( strncmp(s,"both", 2) == 0) uart2m4=0xff;
+	  if( strncmp(s,"a53",  2) == 0) uart2m4=0xf3;
+	  if( strncmp(s,"m4",   2) == 0) uart2m4=0xfc;	  	  
+	  *(volatile unsigned long *)0x303D05A4=uart2m4;	
+	}else
+	{	       
+	  *(volatile unsigned long *)0x303D05A4=uart2m4;
+	}
+
+  
+}
+
+
 void pci_init_board(void)
 {
   /* test the 1 lane mode of the PCIe A controller */
@@ -487,7 +552,12 @@ int board_init(void)
 		setup_fec();
 	}
 #endif
+	init_camera_ov5640();	
 	setup_pcie(); /* environment not read here */
+
+	/* Enable Uart4/Uart2 pre-set in imx8mm_bl31_setup.c bl31_early_platform_setup2() */
+	setup_periph2mcu();
+	
 	return 0;
 }
 
