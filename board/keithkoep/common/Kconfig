@@ -64,3 +64,23 @@ config MYON2
 config TRIZEPS8MINI
        bool "Select TRIZEPS8MINI, if no rev is set, OTP will select targetboard info"
        default n
+
+config MYON2_V1R1_2GB
+       bool "Select V1R1 MYON2 with 2GB RAM and override possibly set OTP fuses"
+       default n
+
+config TRIZEPS8MINI_V1R2_2GB
+       bool "Select V1R2 TRIZEPS8MINI with 2GB RAM and override possibly set OTP fuses"
+       default n
+
+config MOUNTOPTION_EMMC
+       bool "Select Module has EMMC instead of SD-slot."
+       default n
+
+config MOUNTOPTION_SD
+       bool "Select Module has SD-slot instead of EMMC."
+       default n
+
+config BOOT_EXTSDCARD
+       bool "Select to boot Image from external SD-Card"
+       default n

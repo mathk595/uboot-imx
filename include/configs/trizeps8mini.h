@@ -164,6 +164,36 @@
 	"emmc_dev=0\0"\
 	"sd_dev=1\0" \
 
+
+#define KUK_FUSE_SETTINGS \
+	"fuse_emmc=fuse prog 1 3 0x10002012 \0" \
+	"fuse_sd=fuse prog 1 3 0x10001010 \0" \
+
+#ifdef CONFIG_MYON2_V1R1_2GB
+
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x22000000; run fuse_emmc \0" 
+#else
+#ifdef CONFIG_TRIZEPS8MINI_V1R2_2GB
+#ifdef CONFIG_MOUNTOPTION_EMMC
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x12100000; run fuse_emmc \0" 
+#else
+#ifdef CONFIG_MOUNTOPTION_SD
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x12100000; run fuse_sd \0" 
+#else
+#define KUK_FUSE_PRODUCTION
+#endif
+#endif
+#else
+#define KUK_FUSE_PRODUCTION
+#endif
+#endif
+
 /* Initial environment variables */
 #if defined(CONFIG_NAND_BOOT)
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -184,6 +214,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	CONFIG_MFG_ENV_SETTINGS \
 	JAILHOUSE_ENV \
+	KUK_FUSE_PRODUCTION \
 	"pcie=wifionboard\0"                              \
         "append_bootargs=androidboot.selinux=permissive\0"\
 	"script=boot.scr\0" \
@@ -309,8 +340,14 @@
 #define CONFIG_ENV_OFFSET       (60 << 20)
 #endif
 #define CONFIG_ENV_SIZE			0x2000
-#define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2 */
-#define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
+
+#ifdef CONFIG_BOOT_EXTSDCARD
+#define CONFIG_SYS_MMC_ENV_DEV		1                 
+#define CONFIG_MMCROOT			"/dev/mmcblk1p2"  
+#else
+#define CONFIG_SYS_MMC_ENV_DEV		0                 /* USDHC2 */
+#define CONFIG_MMCROOT			"/dev/mmcblk0p2"  /* USDHC2 */
+#endif
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		((CONFIG_ENV_SIZE + (2*1024) + (16*1024)) * 1024)
