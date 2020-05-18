@@ -55,6 +55,12 @@ config SYS_PROMPT
 
 menu "Autoboot options"
 
+config ALLOW_ONLY_ESC_KEY
+	bool "Allow only ESC Key to break"
+	default n
+	help
+	   This options allow only ESC Key to break booting
+
 config AUTOBOOT
 	bool "Autoboot"
 	default y

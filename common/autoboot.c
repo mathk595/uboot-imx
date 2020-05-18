@@ -219,16 +219,28 @@ static int __abortboot(int bootdelay)
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
 #else
-	printf("Hit any key to stop autoboot: %2d ", bootdelay);
+	#ifdef CONFIG_ALLOW_ONLY_ESC_KEY
+	printf("Hit <ESC> key to stop autoboot: %2d ", bootdelay);
+#else
+	printf("Hit any key to stop autoboot : %2d ", bootdelay);
+#endif
 #endif
 
 	/*
 	 * Check if key already pressed
 	 */
 	if (tstc()) {	/* we got a key press	*/
-		(void) getc();  /* consume input	*/
-		puts("\b\b\b 0");
-		abort = 1;	/* don't auto boot	*/
+#ifdef CONFIG_ALLOW_ONLY_ESC_KEY
+			if(getc() == 0x1B) {
+				puts ("\b\b\b 0");
+				abort = 1;
+			}
+#else
+			(void) getc();  /* consume input	*/
+			puts ("\b\b\b 0");
+			abort = 1;	/* don't auto boot	*/
+#endif
+
 	}
 
 	while ((bootdelay > 0) && (!abort)) {
@@ -237,6 +249,13 @@ static int __abortboot(int bootdelay)
 		ts = get_timer(0);
 		do {
 			if (tstc()) {	/* we got a key press	*/
+#ifdef CONFIG_ALLOW_ONLY_ESC_KEY
+				if(getc() == 0x1B) {
+					abort  = 1;	/* don't auto boot	*/
+					bootdelay = 0;	/* no more delay	*/
+					break;
+				}
+#else
 				abort  = 1;	/* don't auto boot	*/
 				bootdelay = 0;	/* no more delay	*/
 # ifdef CONFIG_MENUKEY
@@ -245,6 +264,7 @@ static int __abortboot(int bootdelay)
 				(void) getc();  /* consume input	*/
 # endif
 				break;
+#endif
 			}
 			udelay(10000);
 		} while (!abort && get_timer(ts) < 1000);
