@@ -252,7 +252,7 @@ u32 decode_fracpll(enum clk_root_src frac_pll)
 
 	k = pll_fdiv_ctl1 & GENMASK(15, 0);
 
-	/* FFOUT = ((m + k / 65536) * FFIN) / (p * 2^s), 1 ¡Ü p ¡Ü 63, 64 ¡Ü m ¡Ü 1023, 0 ¡Ü s ¡Ü 6 */
+	/* FFOUT = ((m + k / 65536) * FFIN) / (p * 2^s), 1 â‰¤ p â‰¤ 63, 64 â‰¤ m â‰¤ 1023, 0 â‰¤ s â‰¤ 6 */
 	return lldiv((main_div * 65536 + k) * 24000000ULL, 65536 * pre_div * (1 << post_div));
 }
 
@@ -714,8 +714,15 @@ int clock_init()
 
 	intpll_configure(ANATOP_ARM_PLL, MHZ(1200));
 
+#if 0
+	//Changed to 18.09 version -> old linux kernel not bootable
 	/* Bypass CCM A53 ROOT, Switch to ARM PLL -> MUX-> CPU */
 	clock_set_target_val(CORE_SEL_CFG, CLK_ROOT_SOURCE_SEL(1));
+#else
+	clock_set_target_val(ARM_A53_CLK_ROOT, CLK_ROOT_ON | \
+			     CLK_ROOT_SOURCE_SEL(1) | \
+			     CLK_ROOT_POST_DIV(CLK_ROOT_POST_DIV1));
+#endif
 
 	if (is_imx8mn() || is_imx8mp())
 		intpll_configure(ANATOP_SYSTEM_PLL3, MHZ(600));
@@ -1128,7 +1135,11 @@ int do_mscale_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv
 	printf("USDHC1         %8d MHz\n", freq / 1000000);
 	freq = mxc_get_clock(MXC_QSPI_CLK);
 	printf("QSPI           %8d MHz\n", freq / 1000000);
-
+	freq = mxc_get_clock(MXC_I2C_CLK);
+	printf("I2C            %8d MHz\n", freq / 1000000);
+	freq = decode_fracpll(AUDIO_PLL1_CLK);
+	printf("AUDIO_PLL1    %8d MHz\n", freq / 1000000);
+	
 	return 0;
 }
 
