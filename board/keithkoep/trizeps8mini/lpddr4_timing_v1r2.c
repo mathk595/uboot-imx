@@ -8,7 +8,7 @@
  */
 
 #include <linux/kernel.h>
-#include <asm/arch/imx8m_ddr.h>
+#include <asm/arch/ddr.h>
 
 // 2GB:
 //	K4F6E304HB Dual-Die ( 2ch, 2cs)

@@ -44,6 +44,39 @@ DECLARE_GLOBAL_DATA_PTR;
 #define GPIO_PAD_PU_CTRL (PAD_CTL_DSE6 | PAD_CTL_PUE | PAD_CTL_PE)
 #define GPIO_PAD_PD_CTRL (PAD_CTL_DSE6 |               PAD_CTL_PE)
 
+#ifdef CONFIG_SYS_I2C_MXC
+
+#define I2C_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PE)
+#define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
+
+struct i2c_pads_info i2c_pad_info1 = {
+	.scl = {
+		.i2c_mode = IMX8MM_PAD_I2C1_SCL_I2C1_SCL | PC,
+		.gpio_mode = IMX8MM_PAD_I2C1_SCL_GPIO5_IO14 | PC,
+		.gp = IMX_GPIO_NR(5, 14),
+	},
+	.sda = {
+		.i2c_mode = IMX8MM_PAD_I2C1_SDA_I2C1_SDA | PC,
+		.gpio_mode = IMX8MM_PAD_I2C1_SDA_GPIO5_IO15 | PC,
+		.gp = IMX_GPIO_NR(5, 15),
+	},
+};
+#if 0
+struct i2c_pads_info i2c_pad_info2 = {
+	.scl = {
+		.i2c_mode = IMX8MM_PAD_I2C2_SCL_I2C2_SCL | PC,
+		.gpio_mode = IMX8MM_PAD_I2C2_SCL_GPIO5_IO16 | PC,
+		.gp = IMX_GPIO_NR(5, 16),
+	},
+	.sda = {
+		.i2c_mode = IMX8MM_PAD_I2C2_SDA_I2C2_SDA | PC,
+		.gpio_mode = IMX8MM_PAD_I2C2_SDA_GPIO5_IO17 | PC,
+		.gp = IMX_GPIO_NR(5, 17),
+	},
+};
+#endif
+#endif
+
 static iomux_v3_cfg_t const uart_pads[] = {
 	IMX8MM_PAD_UART1_RXD_UART1_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
 	IMX8MM_PAD_UART1_TXD_UART1_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
@@ -150,9 +183,11 @@ int board_early_init_f(void)
 	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
 	set_wdog_reset(wdog);
 #endif
-
 	imx_iomux_v3_setup_multiple_pads(usb_pads, ARRAY_SIZE(usb_pads));
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
+	
+	init_uart_clk(0);
+	
 	return 0;
 }
 
@@ -164,7 +199,8 @@ int board_postclk_init(void)
 }
 #endif
 
-int dram_init(void)
+
+int board_phys_sdram_size(phys_size_t *size)
 {
 	u64 ram_size;
 
@@ -182,10 +218,7 @@ int dram_init(void)
 		default:				ram_size = PHYS_SDRAM_SIZE;		break;
 	}
 
-	if (rom_pointer[1])
-		ram_size -= rom_pointer[1];
-
-	gd->ram_size = ram_size;
+	*size = ram_size;
 
 
 	return 0;
@@ -312,7 +345,7 @@ void board_phy_dump(struct phy_device *phydev)
   printf("------------------%s-----------------------\n", __func__);
   
   for(i=0; i < 0x1F; i++ )
-    printf("Phy Adr: 0x%02x -> 0x%02x\n", i, phy_read(phydev, MDIO_DEVAD_NONE, i));
+    printf("Phy Adr: 0x%02x -> 0x%04x\n", i, phy_read(phydev, MDIO_DEVAD_NONE, i));
   
 }
 
@@ -378,8 +411,8 @@ int board_phy_config(struct phy_device *phydev)
   if (phydev->drv->config)
     phydev->drv->config(phydev);
 
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x00, 0x1140);
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x1F, 0x8500); // 0xF400); // 0x8400
+  //  phy_write(phydev, MDIO_DEVAD_NONE, 0x00, 0x1140);
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x1F, 0xF500); // 0x8500); // 0xF400); // 0x8400
 #if 0
   //  ar8031_write_debug_reg(phydev,  0x1f, 0x0008);  
   ar8031_write_debug_reg(phydev,  0x00, 0x82ee);
@@ -388,7 +421,7 @@ int board_phy_config(struct phy_device *phydev)
   i= ar8031_read_mmd_reg(phydev,MMD7,EEE_Advertisement);    
   if( ethernet_1GB() == 0 )
   {
-    phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x000);    // Do not use 1GBit
+    phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x0);    // Do not use 1GBit
     j  =  i & ~4;
     j &= ~2;    
     //printf("%s: Set Phy to 100MBit EEE=0x%04x->0x%04x\n", __func__, i, j);
@@ -414,8 +447,10 @@ int board_phy_config(struct phy_device *phydev)
 
   //printf("%s: SGMII_Control_Register 0x%04x->0x%04x\n", __func__, i, j);  
   ar8031_write_mmd_reg(phydev,MMD7,SGMII_Control_Register, j);// Write MMD7 8011 900mV    
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x0,  0x3200);   // 100MBit restart AN
 
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x00,  0x3100); // 100MBit Enable AutoNeg. DuplexMode
+  phy_write(phydev, MDIO_DEVAD_NONE, 0x00,  0x3300); // " restart AN
+  // board_phy_dump(phydev); 
   return(0);  
 }
 #endif
@@ -555,6 +590,10 @@ int board_init(void)
 	init_camera_ov5640();	
 	setup_pcie(); /* environment not read here */
 
+#ifdef CONFIG_SYS_I2C_MXC
+	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);	
+	//setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
+#endif
 	/* Enable Uart4/Uart2 pre-set in imx8mm_bl31_setup.c bl31_early_platform_setup2() */
 	setup_periph2mcu();
 	
@@ -631,6 +670,9 @@ int is_recovery_key_pressing(void)
 
 #ifdef CONFIG_VIDEO_MXS
 
+#define FPGA_ID 0x41
+#define LVDS_ID 0x2C
+
 #define ADV7535_MAIN 0x39
 #define ADV7535_DSI_CEC 0x3C
 
@@ -641,6 +683,75 @@ static const struct sec_mipi_dsim_plat_data imx8mm_mipi_dsim_plat_data = {
 	.reg_base = MIPI_DSI_BASE_ADDR,
 	.gpr_base = CSI_BASE_ADDR + 0x8000,
 };
+
+static void fpga_init(uint8_t val)
+{
+	struct udevice *bus, *main_dev;
+	int i2c_bus = 2;
+	int ret;
+
+	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+	if (ret) {
+		printf("%s: No bus %d\n", __func__, i2c_bus);
+		return;
+	}
+	
+	ret = dm_i2c_probe(bus, FPGA_ID, 0, &main_dev);
+	if (ret) {
+		printf("%s: Can't find device id=0x%x, on bus %d\n",
+			__func__, FPGA_ID, i2c_bus);
+		return;
+	}
+
+	ret = dm_i2c_write(main_dev, 0x10, &val, 1);
+}
+
+static void lvds_init(struct display_info_t const *dev)
+{
+	struct udevice *bus, *main_dev;
+	int i2c_bus = 2;
+	int ret;
+	uint8_t i = 0;
+	uint8_t addr[] = { 0x09, 0x0A, 0x0A, 0x0B, 0x0D, 0x10, 0x11, 0x12, 0x13, 0x18, 0x19, 0x1A, 0x1B, 0x20, 0x21, 0x22, 0x23,
+					   0x24, 0x25, 0x26, 0x27, 0x28, 0x29 ,0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x32, 0x33,
+					   0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x0D, 0xFF};
+	uint8_t valb[] = { 0x01, 0x00, 0x05, 0x10, 0x00, 0x26, 0x00, 0x27, 0x00, 0x78, 0x00, 0x03, 0x00, 0x00, 0x04, 0x00, 0x00,
+					   0x00, 0x03, 0x00, 0x00, 0x21, 0x00 ,0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00,
+					   0x9c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xFF};
+					   
+	if(strncmp(dev->mode.name, "IPANT10", 7) == 0)
+	{
+		//DataImage
+		valb[7]  = 0x2A;	
+		valb[14] = 0x05;
+		valb[18] = 0x00;
+		valb[25] = 0x3C;	
+		valb[29] = 0x03;
+		valb[33] = 0x30;
+    }
+
+	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+	if (ret) {
+		printf("%s: No bus %d\n", __func__, i2c_bus);
+		return;
+	}
+	
+	ret = dm_i2c_probe(bus, LVDS_ID, 0, &main_dev);
+	if (ret) {
+		printf("%s: Can't find device id=0x%x, on bus %d\n",
+			__func__, LVDS_ID, i2c_bus);
+		return;
+	}
+	
+	do{
+		//printf("[0x%x] = 0x%x\n", addr[i], valb[i]);
+		dm_i2c_write(main_dev, addr[i], &valb[i], 1);
+		i++;
+	}while(addr[i] != 0xFF);
+
+	
+	return;
+}
 
 static int adv7535_i2c_reg_write(struct udevice *dev, uint addr, uint mask, uint data)
 {
@@ -750,7 +861,7 @@ static ADV753XREG advinit[] = {
 {0x00, 0x00, 0x00}
 };
 
-static int adv7535_init(void)
+static int adv7535_init(struct display_info_t const *dev)
 {
 	struct udevice *bus, *main_dev, *cec_dev;
 	int i2c_bus = 1;
@@ -848,6 +959,14 @@ void disp_mix_lcdif_clks_enable(ulong gpr_base, bool enable)
 		clrbits_le32(gpr_base + DISPLAY_MIX_CLK_EN_CSR, LCDIF_PIXEL_CLK_SFT_EN | LCDIF_APB_CLK_SFT_EN);
 }
 
+struct mipi_dsi_client_dev kuk_panel_drv = {
+	.channel = 0,
+	.lanes   = 2,
+	.format  = MIPI_DSI_FMT_RGB888,
+	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE ,
+	.name = "default",
+};
+
 struct mipi_dsi_client_dev adv7535_dev = {
 	.channel	= 0,
 	.lanes = 4,
@@ -857,15 +976,95 @@ struct mipi_dsi_client_dev adv7535_dev = {
 	.name = "ADV7535",
 };
 
+
 #define FSL_SIP_GPC			0xC2000000
 #define FSL_SIP_CONFIG_GPC_PM_DOMAIN	0x3
 #define DISPMIX				9
 #define MIPI				10
 
+void do_enable_mipi2rgb(struct display_info_t const *dev)
+{	
+	printf("%s: Enable %s \n", __func__, dev->mode.name);
+	
+	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 8), 0);
+	mdelay(100);
+	gpio_direction_output(IMX_GPIO_NR(1, 8), 1);
+	
+	gpio_request(IMX_GPIO_NR(1, 7), "DISPLAY EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 7), 1);
+	
+	gpio_request(IMX_GPIO_NR(1, 5), "LVDS EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 5), 1);
+	
+	gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT PWM");
+	gpio_direction_output(IMX_GPIO_NR(1, 1), 1);
+	
+	gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT EN");
+	gpio_direction_output(IMX_GPIO_NR(3, 22), 1);
+
+	fpga_init(0x8D);
+
+	/* enable the dispmix & mipi phy power domain */
+	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, DISPMIX, true, 0);
+	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, MIPI, true, 0);
+
+	/* Put lcdif out of reset */
+	disp_mix_bus_rstn_reset(imx8mm_mipi_dsim_plat_data.gpr_base, false);
+	disp_mix_lcdif_clks_enable(imx8mm_mipi_dsim_plat_data.gpr_base, true);
+
+	/* Setup mipi dsim */
+	sec_mipi_dsim_setup(&imx8mm_mipi_dsim_plat_data);
+
+	imx_mipi_dsi_bridge_attach(&kuk_panel_drv);
+}
+
+void do_enable_mipi2lvds(struct display_info_t const *dev)
+{
+	printf("%s: Enable %s \n", __func__, dev->mode.name);
+	
+	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 8), 0);
+	mdelay(100);
+	gpio_direction_output(IMX_GPIO_NR(1, 8), 1);
+	
+	gpio_request(IMX_GPIO_NR(1, 7), "DISPLAY EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 7), 1);
+	
+	gpio_request(IMX_GPIO_NR(1, 5), "DSI EN1");
+	gpio_direction_output(IMX_GPIO_NR(1, 5), 1);
+	
+	gpio_request(IMX_GPIO_NR(1, 4), "LVDS EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 4), 1);
+	
+	gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT PWM");
+	gpio_direction_output(IMX_GPIO_NR(1, 1), 1);
+	//gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
+	
+	gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT EN");
+	gpio_direction_output(IMX_GPIO_NR(3, 22), 1);
+
+	lvds_init(dev);
+	
+	/* enable the dispmix & mipi phy power domain */
+	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, DISPMIX, true, 0);
+	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, MIPI, true, 0);
+
+	/* Put lcdif out of reset */
+	disp_mix_bus_rstn_reset(imx8mm_mipi_dsim_plat_data.gpr_base, false);
+	disp_mix_lcdif_clks_enable(imx8mm_mipi_dsim_plat_data.gpr_base, true);
+
+	/* Setup mipi dsim */
+	sec_mipi_dsim_setup(&imx8mm_mipi_dsim_plat_data);
+	
+	imx_mipi_dsi_bridge_attach(&kuk_panel_drv);
+	
+}
+
 void do_enable_mipi2hdmi(struct display_info_t const *dev)
 {
 	/* ADV7353 initialization */
-	adv7535_init();
+	adv7535_init(dev);
 
 	/* enable the dispmix & mipi phy power domain */
 	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, DISPMIX, true, 0);
@@ -880,11 +1079,139 @@ void do_enable_mipi2hdmi(struct display_info_t const *dev)
 	imx_mipi_dsi_bridge_attach(&adv7535_dev); /* attach adv7535 device */
 }
 
+#define FOCALTECH_ID 0x38
+#define DATAIMAGE_ID 0x5C
+
+static int detect_ipant7(struct display_info_t const *dev)
+{
+	struct udevice *bus, *main_dev;
+	int i2c_bus = 1;
+	int ret;
+	
+	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+	gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
+	
+
+	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+	if (ret) {
+		printf("%s: No bus %d\n", __func__, i2c_bus);
+		return 0;
+	}
+	
+	ret = dm_i2c_probe(bus, FOCALTECH_ID, 0, &main_dev);
+	if (ret) {
+		printf("%s: Can't find device id=0x%x, on bus %d\n",
+			__func__, FOCALTECH_ID, i2c_bus);
+		return 0;
+	}
+	
+	kuk_panel_drv.lanes = 2;
+	kuk_panel_drv.name = "IPANT7";
+	
+	return 1;
+}
+
+static int detect_ipant10(struct display_info_t const *dev)
+{
+	
+	struct udevice *bus, *main_dev;
+	int i2c_bus = 1;
+	int ret;
+
+	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+	gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
+
+	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+	if (ret) {
+		printf("%s: No bus %d\n", __func__, i2c_bus);
+		return 0;
+	}
+	
+	ret = dm_i2c_probe(bus, DATAIMAGE_ID, 0, &main_dev);
+	if (ret) {
+		printf("%s: Can't find device id=0x%x, on bus %d\n",
+			__func__, DATAIMAGE_ID, i2c_bus);
+		return 0;
+	}
+		
+	kuk_panel_drv.lanes = 4;
+	kuk_panel_drv.name = "IPANT10";
+
+	return 1;
+}
+
+
+void board_quiesce_devices(void)
+{
+	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 8), 0);
+}
+
 struct display_info_t const displays[] = {{
 	.bus = LCDIF_BASE_ADDR,
 	.addr = 0,
 	.pixfmt = 24,
 	.detect = NULL,
+	.enable	= do_enable_mipi2lvds,
+	.mode	= {
+		.name			= "MIPI2KUK",
+		.refresh		= 60,
+		.xres			= 1024,
+		.yres			= 768,
+		.pixclock		= 16835, /* 59400000 // 65000000 */
+		.left_margin	= 156,
+		.right_margin	= 156,
+		.upper_margin	= 21,
+		.lower_margin	= 7,
+		.hsync_len		= 8,
+		.vsync_len		= 10,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_ipant7,
+	.enable	= do_enable_mipi2rgb,
+	.mode	= {
+		.name			= "IPANT7",
+		.refresh		= 60,
+		.xres			= 800,
+		.yres			= 480,
+		.pixclock		= 33300, /* 33300000 */
+		.left_margin	= 40,
+		.right_margin	= 210,
+		.upper_margin	= 20,
+		.lower_margin	= 22,
+		.hsync_len		= 6,
+		.vsync_len		= 3,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_ipant10,
+	.enable	= do_enable_mipi2lvds,
+	.mode	= {
+		.name			= "IPANT10",
+		.refresh		= 60,
+		.xres			= 1280,
+		.yres			= 800,
+		.pixclock		= 24390, /* 41000000 */
+		.left_margin	= 48,
+		.right_margin	= 52,
+		.upper_margin	= 10,
+		.lower_margin	= 10,
+		.hsync_len		= 60,
+		.vsync_len		= 3,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = adv7535_init,
 	.enable	= do_enable_mipi2hdmi,
 	.mode	= {
 		.name			= "MIPI2HDMI",
