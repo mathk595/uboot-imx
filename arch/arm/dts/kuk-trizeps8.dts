@@ -21,7 +21,7 @@
 #include "fsl-imx8mq.dtsi"
 
 / {
-	model = "Freescale i.MX8MQ EVK";
+	model = "i.MX8MQ TrizepsVIII";
 	compatible = "fsl,imx8mq-evk", "fsl,imx8mq";
 
 	chosen {
@@ -357,11 +357,6 @@
 	};
 };
 
-&mipi_dsi {
-	reset = <&src>;
-	mux-sel = <&gpr>;	/* lcdif or dcss */
-	status = "okay";
-};
 
 &usdhc1 {
 	pinctrl-names = "default", "state_100mhz", "state_200mhz";
@@ -409,12 +404,5 @@
 	dr_mode = "host";
 };
 
-&gpu {
-	status = "okay";
-};
-
-&vpu {
-	status = "okay";
-};
 
 
