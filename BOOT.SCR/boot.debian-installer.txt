@@ -1,0 +1,28 @@
+setenv fdt_addr    0x43000000
+setenv loadaddr    0x40480000 
+setenv initrd_addr 0xA0000000
+
+echo Loading Kernel Image...${loadaddr}
+fatload mmc  0:1 ${loadaddr}  Image
+
+md.b  ${loadaddr}
+
+echo Loading device tree ...${fdt_addr}
+fatload mmc  0:1 ${fdt_addr}    ${fdt_file}
+
+echo Loading ramdisk     ...${initrd_addr}
+fatload mmc  0:1 ${initrd_addr} initramfs.uImage
+
+md.b  ${initrd_addr}
+
+setenv   bootargs console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200  
+echo -----------------------------------------------------------------------------------------------
+echo kernel commandline: $bootargs 
+echo KERNEL :${loadaddr} 
+echo DEVTREE:${fdt_addr} 
+echo RAMDISK:${initrd_addr}
+echo -----------------------------------------------------------------------------------------------
+
+echo "Now Booting the Debian..." 
+booti ${loadaddr} ${initrd_addr} ${fdt_addr}
+# bootm ${loadaddr} ${initrd_addr}:83991040 ${fdt_addr}
