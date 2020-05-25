@@ -26,7 +26,10 @@
 #if defined(__ARMEB__) || defined(__AARCH64EB__)
 #include <linux/byteorder/big_endian.h>
 #else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <linux/byteorder/little_endian.h>
+#pragma GCC diagnostic pop
 #endif
 
 #endif
