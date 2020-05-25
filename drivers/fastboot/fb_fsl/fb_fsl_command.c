@@ -383,7 +383,7 @@ static void wipe_all_userdata(void)
 	printf("Wipe userdata completed.\n");
 }
 
-static FbLockState do_fastboot_unlock(bool force)
+FbLockState do_fastboot_unlock(bool force)
 {
 	int status;
 
@@ -709,6 +709,36 @@ static void flashing(char *cmd, char *response)
 			printf("flashing get_unlock_ability fail!\n");
 			strcpy(response, "FAILget unlock ability failed.");
 		}
+		 } else if (endswith(cmd, "disable_dm_verity")) {
+	                u32 disable_dm_verity=1;
+			env_set_ulong("disable_dm_verity", disable_dm_verity);
+			env_save();			  			
+			strcpy(response, "OKAY");		       
+	} else if (endswith(cmd, "enable_dm_verity")) {
+	                u32 disable_dm_verity=0;
+			env_set_ulong("disable_dm_verity", disable_dm_verity);
+			env_save();			  
+			strcpy(response, "OKAY");		       
+        } else if (endswith(cmd, "pcie-onboard-wifi")) {
+	                env_set("pcie", "wifionboard");
+			env_save();			  			
+			strcpy(response, "OKAY");		       
+        } else if (endswith(cmd, "pcie-extern")) {
+	                env_set("pcie", "extern");
+			env_save();			  			
+			strcpy(response, "OKAY");		       
+        } else if (endswith(cmd, "pcie-off")) {
+	                env_set("pcie", "off");
+			env_save();			  			
+			strcpy(response, "OKAY");		       
+        } else if (endswith(cmd, "eth1G")) {
+	                env_set("ethspeed", "1Gb");
+			env_save();			  			
+			strcpy(response, "OKAY");		       
+        } else if (endswith(cmd, "eth100M")) {
+	                env_set("ethspeed", "100Mb");
+			env_save();			  			
+			strcpy(response, "OKAY");	
 	} else {
 		printf("Unknown flashing command:%s\n", cmd);
 		strcpy(response, "FAILcommand not defined");

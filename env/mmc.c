@@ -61,6 +61,7 @@ static inline int mmc_offset_try_partition(const char *str, s64 *val)
 	return 0;
 }
 
+extern long long env_get_offset(long long defautl_offset);
 static inline s64 mmc_offset(int copy)
 {
 	const struct {

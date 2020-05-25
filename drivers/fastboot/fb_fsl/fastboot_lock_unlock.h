@@ -59,6 +59,7 @@ typedef enum {
 }FbLockEnableResult;
 
 FbLockState fastboot_get_lock_stat(void);
+FbLockState do_fastboot_unlock(bool force);
 
 int fastboot_set_lock_stat(FbLockState lock);
 

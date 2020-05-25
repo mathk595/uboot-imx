@@ -70,6 +70,16 @@ boot_metric metrics = {
   .sw	 = 0
 };
 
+static inline unsigned long Big2Little(unsigned long a)
+{
+  unsigned long ret =  \
+      ((a & 0xff000000)>>24)
+    | ((a & 0x00ff0000)>> 8)
+    | ((a & 0x0000ff00)<< 8)
+    | ((a & 0x000000ff)<<24);
+  return ( ret );
+}
+
 int read_from_partition_multi(const char* partition,
 		int64_t offset, size_t num_bytes, void* buffer, size_t* out_num_read)
 {
@@ -166,7 +176,14 @@ fail:
 
 #if defined(CONFIG_FASTBOOT_LOCK)
 int do_lock_status(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
-	FbLockState status = fastboot_get_lock_stat();
+	FbLockState status1, status = fastboot_get_lock_stat();
+
+	if( argv[0] != 0 )
+	  printf("do_lock_status argc:%d argv[%s].\n", argc, argv[0]);
+
+	if( argv[0] != 0 && argv[1] != 0 )
+	  printf("do_lock_status argc:%d argv[%s %s].\n", argc, argv[0], argv[1]);
+
 	if (status != FASTBOOT_LOCK_ERROR) {
 		if (status == FASTBOOT_LOCK)
 			printf("fastboot lock status: locked.\n");
@@ -176,6 +193,22 @@ int do_lock_status(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 		printf("fastboot lock status error!\n");
 
 	display_lock(status, -1);
+
+	if( argc == 2 && strcmp(argv[1], "unlock") == 0 )
+	{
+	    printf("do_lock_status [%s]\n",argv[1]);	  
+	    do_fastboot_unlock(true);
+	    status1 = fastboot_get_lock_stat();	    
+
+	    if (status1 != FASTBOOT_LOCK_ERROR) {
+		if (status1 == FASTBOOT_LOCK)
+			printf("fastboot lock status now: locked.\n");
+		else
+			printf("fastboot lock status now: unlocked.\n");
+	    } else
+	      printf("fastboot lock status error!\n");
+	    display_lock(status1, -1);
+	}		   
 
 	return 0;
 
@@ -220,7 +253,7 @@ U_BOOT_CMD(
 );
 #endif
 
-#if defined CONFIG_SYSTEM_RAMDISK_SUPPORT && defined CONFIG_ANDROID_AUTO_SUPPORT
+#if defined CONFIG_SYSTEM_RAMDISK_SUPPORT || defined CONFIG_ANDROID_AUTO_SUPPORT
 /* Setup booargs for taking the system parition as ramdisk */
 static void fastboot_setup_system_boot_args(const char *slot, bool append_root)
 {
@@ -246,11 +279,13 @@ static void fastboot_setup_system_boot_args(const char *slot, bool append_root)
 		char bootargs_3rd[ANDR_BOOT_ARGS_SIZE] = {'\0'};
 		if (append_root) {
 			u32 dev_no = mmc_map_to_kernel_blk(mmc_get_env_dev());
-			sprintf(bootargs_3rd, "root=/dev/mmcblk%dp%d ",
+			sprintf(bootargs_3rd, "skip_initramfs root=/dev/mmcblk%dp%d ",
 					dev_no,
 					ptentry->partition_index);
+			} else {
+				sprintf(bootargs_3rd, "skip_initramfs");
 		}
-		strcat(bootargs_3rd, "rootwait");
+		strcat(bootargs_3rd, " rootwait");
 
 		env_set("bootargs_3rd", bootargs_3rd);
 	} else {
@@ -664,13 +699,14 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 		char bootargs_sec[ANDR_BOOT_EXTRA_ARGS_SIZE];
 		if (lock_status == FASTBOOT_LOCK) {
 			snprintf(bootargs_sec, sizeof(bootargs_sec),
-					"androidboot.verifiedbootstate=green androidboot.flash.locked=1 androidboot.slot_suffix=%s ",
-					avb_out_data->ab_suffix);
+					"androidboot.verifiedbootstate=green androidboot.flash.locked=1 androidboot.slot_suffix=%s %s",
+					avb_out_data->ab_suffix, avb_out_data->cmdline);
 		} else {
 			snprintf(bootargs_sec, sizeof(bootargs_sec),
-					"androidboot.verifiedbootstate=orange androidboot.flash.locked=0 androidboot.slot_suffix=%s ",
-					avb_out_data->ab_suffix);
+					"androidboot.verifiedbootstate=orange androidboot.flash.locked=0 androidboot.slot_suffix=%s %s",
+					avb_out_data->ab_suffix, avb_out_data->cmdline);
 		}
+#if 0		
 #ifdef CONFIG_ANDROID_AUTO_SUPPORT
 		strcat(bootargs_sec, avb_out_data->cmdline);
 #else
@@ -681,8 +717,9 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 			strcat(bootargs_sec, " androidboot.force_normal_boot=1");
 		}
 #endif
+#endif
 		env_set("bootargs_sec", bootargs_sec);
-#if defined CONFIG_SYSTEM_RAMDISK_SUPPORT && defined CONFIG_ANDROID_AUTO_SUPPORT
+#if defined CONFIG_SYSTEM_RAMDISK_SUPPORT || defined CONFIG_ANDROID_AUTO_SUPPORT
 		if(!is_recovery_mode) {
 			if(avb_out_data->cmdline != NULL && strstr(avb_out_data->cmdline, "root="))
 				fastboot_setup_system_boot_args(avb_out_data->ab_suffix, false);
@@ -789,8 +826,11 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 		dt_entry = (struct dt_table_entry *)((ulong)dt_img +
 				be32_to_cpu(dt_img->dt_entries_offset));
 		fdt_size = be32_to_cpu(dt_entry->dt_size);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 		memcpy((void *)fdt_addr, (void *)((ulong)dt_img +
 				be32_to_cpu(dt_entry->dt_offset)), fdt_size);
+#pragma GCC diagnostic pop
 	} else {
 		fdt_addr = (ulong)(hdr->second_addr);
 		fdt_size = (ulong)(hdr->second_size);
@@ -813,9 +853,67 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 	printf("kernel   @ %08x (%d)\n", hdr->kernel_addr, hdr->kernel_size);
 	printf("ramdisk  @ %08x (%d)\n", hdr->ramdisk_addr, hdr->ramdisk_size);
 #ifdef CONFIG_OF_LIBFDT
-	if (fdt_size)
-		printf("fdt      @ %08x (%d)\n", fdt_addr, fdt_size);
+	{
+	  struct fastboot_ptentry *ptn_dtree;	  
+	  unsigned long fdtaddr=0x1FF60000;	  
+	  u32   kuk_fdtsize=0;
+	  char *fdtaddrstr=env_get("fdt_addr");
+	  char *fdt_file=env_get("fdt_file");
+	  
+	  if( (fdtaddrstr=env_get("fdt_addr")) != 0 )
+	  {
+	    fdtaddr=simple_strtoul(fdtaddrstr,NULL, 16);	    
+	  }	  
+
+	  // if( dt_img != NULL )    /* Take already allocated Address if already loaded by dtbo part.
+	  //   fdtaddr =( unsigned long )dt_img;
+	  
+	  ptn_dtree = fastboot_flash_find_ptn("oem");
+	  if( ptn_dtree != NULL )
+	  {
+	    char commandstr[128];
+	    char mmcdev[5] = "mmc0";	    
+	    mmcdev[3]='0'+fastboot_devinfo.dev_id;	    
+
+	    printf("OEM Partition: %s index:%d start:%d Lenght:%d\n\r",
+		   mmcdev,ptn_dtree->partition_index,ptn_dtree->start,ptn_dtree->length);
+
+	    sprintf(&commandstr[0], "ext4load mmc %d:%x 0x%lx %s",
+		    fastboot_devinfo.dev_id,
+		    ptn_dtree->partition_index,
+		    fdtaddr,
+		    fdt_file);
+
+	    printf("Run command:<%s>\r\n",commandstr);
+	    run_command(commandstr, 0);
+	    
+	  }
+
+
+	 // Short Version....
+	  if( *(u32 *) fdtaddr == 0xedfe0dd0 )
+	  {		    
+	    kuk_fdtsize = Big2Little(*(long *)(fdtaddr+4));
+	    printf("Take preloaded DevTree @0x%lx size 0x%x, skipping bootimg Devictree!\n\r",
+		   fdtaddr,kuk_fdtsize);
+	    hdr->second_addr=fdtaddr;
+	    fdt_size        =kuk_fdtsize;	    
+	    hdr->second_size=kuk_fdtsize;	    
+	    printf("Fdt      @ %08x-%08x (%d)\n", hdr->second_addr, hdr->second_addr+fdt_size, fdt_size);
+	  }else
+	   {
+	    // nodtreeInOem:
+	    if (is_load_fdt_from_part()) {
+		if (fdt_size)
+		  printf("Fdt      @ %08x-%08x (%d)\n", hdr->second_addr, hdr->second_addr+fdt_size, fdt_size);
+	    } else {
+		if (hdr->second_size)
+		  printf("Fdt      @ %08x-%08x (%d)\n", hdr->second_addr, hdr->second_addr+hdr->second_size, hdr->second_size);
+	    }
+	  }	  
+	}	
 #endif /*CONFIG_OF_LIBFDT*/
+	printf("Ramdisk  @ %08x-%08x (%d)\n", hdr->ramdisk_addr, hdr->ramdisk_addr+ hdr->ramdisk_size, hdr->ramdisk_size);
 
 	char boot_addr_start[12];
 	char ramdisk_addr[25];
@@ -856,7 +954,13 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 		free(boot_buf);
 
 	if (check_image_arm64) {
+		char *stop_boot_env=env_get("boot_debug");
 #ifdef CONFIG_CMD_BOOTI
+		if( strcmp("1", stop_boot_env) == 0 )
+		{
+		  printf("Stop do_booti....");		  
+		  return 1;
+		}
 		do_booti(NULL, 0, 4, boot_args);
 #else
 		debug("please enable CONFIG_CMD_BOOTI when kernel are Image");
