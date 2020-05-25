@@ -11,6 +11,7 @@
 #include <sparse_format.h>
 #include <image-sparse.h>
 
+#include <div64.h>
 static int curr_device = -1;
 
 static void print_mmcinfo(struct mmc *mmc)
@@ -43,6 +44,12 @@ static void print_mmcinfo(struct mmc *mmc)
 	puts("Capacity: ");
 	print_size(mmc->capacity, "\n");
 
+	{
+	  long unsigned int lba=lldiv(mmc->capacity, mmc->read_bl_len);
+	  printf("Capacity: %lld [0x%llx], lba: %ld [0x%lx], blk_len:%d \n",
+		  mmc->capacity, mmc->capacity, lba, lba, mmc->read_bl_len );
+	}
+	
 	printf("Bus Width: %d-bit%s\n", mmc->bus_width,
 			mmc->ddr_mode ? " DDR" : "");
 
