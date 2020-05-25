@@ -205,6 +205,10 @@
 #define ERRCONTROL1		25
 #define ERRCONTROL0		26
 
+#define MIPI_HFP_PKT_OVERHEAD	6
+#define MIPI_HBP_PKT_OVERHEAD	6
+#define MIPI_HSA_PKT_OVERHEAD	6
+
 /* Dispmix Control & GPR Registers */
 #define DISPLAY_MIX_SFT_RSTN_CSR		0x00
 #ifdef CONFIG_IMX8MN
@@ -453,7 +457,7 @@ static int sec_mipi_dsim_config_pll(struct sec_mipi_dsim *dsim)
 
 static void sec_mipi_dsim_set_main_mode(struct sec_mipi_dsim *dsim)
 {
-	uint32_t bpp, hfp_wc, hbp_wc, hsa_wc;
+	uint32_t bpp, hfp_wc, hbp_wc, hsa_wc, wc;
 	uint32_t mdresol = 0, mvporch = 0, mhporch = 0, msync = 0;
 	struct fb_videomode *vmode = &dsim->vmode;
 
@@ -471,8 +475,14 @@ static void sec_mipi_dsim_set_main_mode(struct sec_mipi_dsim *dsim)
 	/* calculate hfp & hbp word counts */
 	if (dsim->dsi_panel_drv) {
 		/* Panel driver is registered, will work with panel */
-		hfp_wc = vmode->right_margin * (bpp >> 3);
-		hbp_wc = vmode->left_margin * (bpp >> 3);
+		wc = DIV_ROUND_UP(vmode->right_margin * (bpp >> 3),
+				  dsim->lanes);
+		hfp_wc = wc > MIPI_HFP_PKT_OVERHEAD ?
+			 wc - MIPI_HFP_PKT_OVERHEAD : vmode->right_margin;
+		wc = DIV_ROUND_UP(vmode->left_margin * (bpp >> 3),
+				  dsim->lanes);
+		hbp_wc = wc > MIPI_HBP_PKT_OVERHEAD ?
+			 wc - MIPI_HBP_PKT_OVERHEAD : vmode->left_margin;
 	} else {
 		hfp_wc = vmode->right_margin * (bpp >> 3) / dsim->lanes - 6;
 		hbp_wc = vmode->left_margin * (bpp >> 3) / dsim->lanes - 6;
@@ -485,7 +495,10 @@ static void sec_mipi_dsim_set_main_mode(struct sec_mipi_dsim *dsim)
 
 	/* calculate hsa word counts */
 	if (dsim->dsi_panel_drv) {
-		hsa_wc = vmode->hsync_len * (bpp >> 3);
+		wc = DIV_ROUND_UP(vmode->hsync_len * (bpp >> 3),
+				  dsim->lanes);
+		hsa_wc = wc > MIPI_HSA_PKT_OVERHEAD ?
+			 wc - MIPI_HSA_PKT_OVERHEAD : vmode->hsync_len;
 	} else {
 		hsa_wc = vmode->hsync_len * (bpp >> 3) / dsim->lanes - 6;
 	}
@@ -577,9 +590,11 @@ static void sec_mipi_dsim_config_dpi(struct sec_mipi_dsim *dsim)
 static void sec_mipi_dsim_config_dphy(struct sec_mipi_dsim *dsim)
 {
 	uint32_t phytiming = 0, phytiming1 = 0, phytiming2 = 0, timeout = 0;
-
+	struct fb_videomode *vmode = &dsim->vmode;
+	
 	/* TODO: add a PHY timing table arranged by the pll Fout */
-
+	if(vmode->pixclock == 6734)
+	{
 	phytiming  |= PHYTIMING_SET_M_TLPXCTL(6)	|
 		      PHYTIMING_SET_M_THSEXITCTL(11);
 	dsim_write(dsim, phytiming, DSIM_PHYTIMING);
@@ -597,7 +612,30 @@ static void sec_mipi_dsim_config_dphy(struct sec_mipi_dsim *dsim)
 
 	timeout |= TIMEOUT_SET_BTAOUT(0xf)	|
 		   TIMEOUT_SET_LPDRTOUT(0xf);
-	dsim_write(dsim, 0xf000f, DSIM_TIMEOUT);
+	dsim_write(dsim, timeout, DSIM_TIMEOUT);
+	} else if(vmode->pixclock == 33300)
+	{
+		dsim_write(dsim, 0x305, DSIM_PHYTIMING);
+		dsim_write(dsim, 0x3110904, DSIM_PHYTIMING1);
+		dsim_write(dsim, 0x30406, DSIM_PHYTIMING2);
+		dsim_write(dsim, 0xff00ff, DSIM_TIMEOUT);
+	} else if(vmode->pixclock == 16835)
+	{
+		dsim_write(dsim, 0x204, DSIM_PHYTIMING);
+		dsim_write(dsim, 0x20f0903, DSIM_PHYTIMING1);
+		dsim_write(dsim, 0x30406, DSIM_PHYTIMING2);
+		dsim_write(dsim, 0xff00ff, DSIM_TIMEOUT);
+	} else if(vmode->pixclock == 24390)
+	{
+		dsim_write(dsim, 0x103, DSIM_PHYTIMING);
+		dsim_write(dsim, 0x10a0802, DSIM_PHYTIMING1);
+		dsim_write(dsim, 0x20205, DSIM_PHYTIMING2);
+		dsim_write(dsim, 0xff00ff, DSIM_TIMEOUT);
+	} else
+	{
+		printf("TODO: add config dphy calc \r\n");
+	}
+	
 }
 
 static void sec_mipi_dsim_config_clkctrl(struct sec_mipi_dsim *dsim)
@@ -815,7 +853,14 @@ static int sec_mipi_dsim_bridge_mode_set(struct mipi_dsi_bridge_driver *bridge_d
 		 * Only support '1080p@60Hz' for now,
 		 * add other modes support later
 		 */
-		dsim_host->pms = 0x4210;
+		if(fbmode->pixclock == 6734)
+			dsim_host->pms = 0x4210;
+		else if(fbmode->pixclock == 33300)
+			dsim_host->pms = 0xA942;
+		else if(fbmode->pixclock == 16835)
+			dsim_host->pms = 0xA842;
+		else if(fbmode->pixclock == 24390)
+			dsim_host->pms = 0x13483;
 	}
 
 	debug("%s: bitclk %llu pixclk %llu\n", __func__, dsim_host->bit_clk, dsim_host->pix_clk);
