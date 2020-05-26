@@ -878,11 +878,21 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 	    printf("OEM Partition: %s index:%d start:%d Lenght:%d\n\r",
 		   mmcdev,ptn_dtree->partition_index,ptn_dtree->start,ptn_dtree->length);
 
+#define USE_VFAT 1
+#if USE_VFAT
+	    sprintf(&commandstr[0], "fatload mmc %d:%x 0x%lx %s",
+		    fastboot_devinfo.dev_id,
+		    ptn_dtree->partition_index,
+		    fdtaddr,
+		    fdt_file);
+#else
 	    sprintf(&commandstr[0], "ext4load mmc %d:%x 0x%lx %s",
 		    fastboot_devinfo.dev_id,
 		    ptn_dtree->partition_index,
 		    fdtaddr,
 		    fdt_file);
+#endif
+
 
 	    printf("Run command:<%s>\r\n",commandstr);
 	    run_command(commandstr, 0);
