@@ -47,7 +47,6 @@
 #define CONFIG_SPL_STACK		0x91fff0
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
 #define CONFIG_SPL_BSS_START_ADDR      0x00910000
 #define CONFIG_SPL_BSS_MAX_SIZE        0x2000	/* 8 KB */
@@ -132,7 +131,7 @@
 #endif
 
 
-#define CONFIG_LOADADDR			0x40480000
+#define CONFIG_LOADADDR					0x40480000
 #define CONFIG_SYS_LOAD_ADDR            CONFIG_LOADADDR
 #define SCRIPT_ADDR                     0x40400000
 
@@ -164,13 +163,11 @@
 	"emmc_dev=0\0"\
 	"sd_dev=1\0" \
 
-
 #define KUK_FUSE_SETTINGS \
 	"fuse_emmc=fuse prog 1 3 0x10002012 \0" \
 	"fuse_sd=fuse prog 1 3 0x10001010 \0" \
 
 #ifdef CONFIG_MYON2_V1R1_2GB
-
 #define KUK_FUSE_PRODUCTION \
 	KUK_FUSE_SETTINGS \
 	"fuse_config=fuse prog 14 0 0x22000000; run fuse_emmc \0" 
@@ -263,6 +260,7 @@
 	"loadfdt=echo loading fdt..;"                                                               \
             "if run loadfdtext4; then echo loadtdext4 ok; else echo trying from fat....; "          \
             "if run loadfdtfat;  then echo loadftdfat ok; fi; fi;\0"                                \
+	"loadbootiot=echo Try Booting IoT Core ...;  part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = 1d30adf8-0aef-4d83-b78c-ac719086c709; then if read mmc ${mmcdev}:${bootpar} 0x40800000 0 1000; then globalpage init 0x407E9000; globalpage add ethaddr; usb start; bootm 0x40800000; fi; fi; done;\0"  \
 	"mmcboot=echo Booting from mmc ...; " \
 		"run mmcargs; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
@@ -295,16 +293,18 @@
 			"booti; " \
 		"fi;\0"
 
+#ifndef CONFIG_BOOTCOMMAND
 #define CONFIG_BOOTCOMMAND \
 	"mmc dev ${mmcdev}; if mmc rescan; "\
         "then "\
+		"run loadbootiot; " \
 	     "if              run loadbootscriptext4;       then run bootscript; "    \
 	     "else if         run loadbootscriptfat;        then run bootscript; "    \
 	       "else if       run loadbootscriptfatandroid; then run bootscript; "    \
 	         "else if     run loadimageext4;            then run mmcboot; "       \
                    "else if   run loadimagefat;             then run mmcboot; "       \
                      "else    mw.b $fdt_addr 0 0x40;        run loadfdtandroid; "     \
-	                  "if  run loadandroid; then  ;     else run netboot; "       \
+	                  "if  run loadandroid; then  ;     else run loadandroid; "  \
                           "fi; "\
 		     "fi; "    \
 		   "fi; "      \
@@ -312,6 +312,7 @@
 	       "fi; "          \
 	     "fi; "	       \
 	"else booti ${loadaddr} - ${fdt_addr}; fi "
+#endif
 #endif
 
 /* Link Definitions */
@@ -340,7 +341,6 @@
 #define CONFIG_ENV_OFFSET       (60 << 20)
 #endif
 #define CONFIG_ENV_SIZE			0x2000
-
 #ifdef CONFIG_BOOT_EXTSDCARD
 #define CONFIG_SYS_MMC_ENV_DEV		1                 
 #define CONFIG_MMCROOT			"/dev/mmcblk1p2"  
@@ -355,7 +355,6 @@
 #define CONFIG_SYS_SDRAM_BASE           0x40000000
 #define PHYS_SDRAM                      0x40000000
 #define PHYS_SDRAM_SIZE				0x100000000 /* 4GB DDR */
-#define CONFIG_NR_DRAM_BANKS		1
 
 #define CONFIG_SYS_MEMTEST_START    PHYS_SDRAM
 #define CONFIG_SYS_MEMTEST_END      (CONFIG_SYS_MEMTEST_START + (PHYS_SDRAM_SIZE >> 1))
@@ -390,32 +389,13 @@
 #define CONFIG_SYS_MMC_IMG_LOAD_PART	1
 
 #ifdef CONFIG_FSL_FSPI
-#define CONFIG_SF_DEFAULT_BUS		0
-#define CONFIG_SF_DEFAULT_CS		0
-#define CONFIG_SF_DEFAULT_SPEED	40000000
-#define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 #define FSL_FSPI_FLASH_SIZE		SZ_32M
 #define FSL_FSPI_FLASH_NUM		1
 #define FSPI0_BASE_ADDR			0x30bb0000
 #define FSPI0_AMBA_BASE			0x0
-#define	CONFIG_SPI_FLASH_BAR
 #define CONFIG_FSPI_QUAD_SUPPORT
 
 #define CONFIG_SYS_FSL_FSPI_AHB
-#endif
-
-/* Enable SPI */
-#ifndef CONFIG_NAND_MXS
-#ifndef CONFIG_FSL_FSPI
-#ifdef CONFIG_CMD_SF
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_MXC_SPI
-#define CONFIG_SF_DEFAULT_BUS  0
-#define CONFIG_SF_DEFAULT_SPEED 20000000
-#define CONFIG_SF_DEFAULT_MODE (SPI_MODE_0)
-#endif
-#endif
 #endif
 
 #ifdef CONFIG_CMD_NAND
@@ -457,7 +437,6 @@
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE
-#define CONFIG_USBD_HS
 
 #define CONFIG_CMD_USB_MASS_STORAGE
 #define CONFIG_USB_GADGET_MASS_STORAGE
@@ -465,13 +444,14 @@
 
 #endif
 
-#define CONFIG_USB_GADGET_DUALSPEED
-#define CONFIG_USB_GADGET_VBUS_DRAW 2
-
 #define CONFIG_CI_UDC
+#define CONFIG_USB_GADGET_DUALSPEED
+#define CONFIG_USBD_HS
+#define CONFIG_USB_GADGET_VBUS_DRAW 2
+#define CONFIG_USB_MAX_CONTROLLER_COUNT         2
+
 
 #define CONFIG_MXC_USB_PORTSC  (PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CONFIG_USB_MAX_CONTROLLER_COUNT         2
 
 #ifdef CONFIG_VIDEO
 #define CONFIG_VIDEO_MXS
@@ -483,7 +463,6 @@
 #define CONFIG_VIDEO_BMP_RLE8
 #define CONFIG_VIDEO_BMP_LOGO
 #define CONFIG_IMX_VIDEO_SKIP
-#define CONFIG_RM67191
 #endif
 
 #define CONFIG_OF_SYSTEM_SETUP
@@ -497,6 +476,7 @@
 
 #define CONFIG_BCB_SUPPORT
 
+/*#define CONFIG_FASTBOOT*/
 #define CONFIG_ANDROID_AB_SUPPORT
 #define CONFIG_AVB_SUPPORT
 #define CONFIG_SUPPORT_EMMC_RPMB
@@ -528,34 +508,17 @@
 #define CONFIG_FASTBOOT_FLASH
 #endif
 
-#ifndef CONFIG_FASTBOOT_STORAGE_MMC
-#define CONFIG_FASTBOOT_STORAGE_MMC
-#endif
-
 #ifndef CONFIG_FSL_FASTBOOT
 #define CONFIG_FSL_FASTBOOT
 #endif
 
 #define CONFIG_ANDROID_RECOVERY
 
-#ifndef CONFIG_FASTBOOT_BUF_ADDR
-#define CONFIG_FASTBOOT_BUF_ADDR   CONFIG_SYS_LOAD_ADDR
-#else
-#warning("CONFIG_FASTBOOT_BUF_ADDR already set");
-#endif
-
-#ifndef CONFIG_FASTBOOT_BUF_SIZE
-#define CONFIG_FASTBOOT_BUF_SIZE   0x19000000
-#else
-#warning("CONFIG_FASTBOOT_BUF_SIZE already set");
-#endif
-
 #define CONFIG_CMD_BOOTA
+#ifndef CONFIG_SUPPORT_RAW_INITRD
 #define CONFIG_SUPPORT_RAW_INITRD
+#endif
 #define CONFIG_SERIAL_TAG
-
-/* #undef CONFIG_EXTRA_ENV_SETTINGS */
-#undef CONFIG_BOOTCOMMAND
 
 
 /* Enable mcu firmware flash */
