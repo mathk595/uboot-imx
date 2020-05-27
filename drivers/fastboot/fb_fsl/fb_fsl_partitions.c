@@ -284,15 +284,21 @@ void fastboot_flash_dump_ptn(void)
 struct fastboot_ptentry *fastboot_flash_find_ptn(const char *name)
 {
 	unsigned int n;
-
+	int acceptbootloader=0;
+	if( strcmp( "bootloader", name) ==0 )
+	{
+	  printf("fastboot_flash_find_ptn :<%s>\n", name);
+	  acceptbootloader=1;
+	}
 	for (n = 0; n < g_pcount; n++) {
-		/* Make sure a substring is not accepted */
-		if (strlen(name) == strlen(g_ptable[n].name)) {
-			if (0 == strcmp(g_ptable[n].name, name))
-				return g_ptable + n;
+		/* Make sure a substring is not accepted, except for bootloader/bootloader0 */
+		if (   (strlen(name)==strlen(g_ptable[n].name))
+		    || (acceptbootloader&&((strlen(name)+1)==strlen(g_ptable[n].name)))
+		    ) {
+		          if (0 == strncmp(name, g_ptable[n].name, strlen(name)))
+			    return g_ptable + n;
 		}
 	}
-
 	return 0;
 }
 
