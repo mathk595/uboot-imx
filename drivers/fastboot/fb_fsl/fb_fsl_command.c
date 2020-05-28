@@ -90,6 +90,19 @@ static void enable_recovery_fastboot(void)
 static FbBootMode fastboot_get_bootmode(void)
 {
 	int boot_mode = BOOTMODE_NORMAL;
+	char commandstr[128];
+
+	sprintf(&commandstr[0], "env delete misc_part");
+	run_command(commandstr, 0);
+
+	sprintf(&commandstr[0], "part number mmc %d %s misc_part",
+		    fastboot_devinfo.dev_id,
+		    FASTBOOT_PARTITION_MISC);
+	run_command(commandstr, 0);
+
+	if (!env_get("misc_part"))
+		return boot_mode;
+
 #ifdef CONFIG_ANDROID_RECOVERY
 	if(is_recovery_key_pressing()) {
 		boot_mode = BOOTMODE_RECOVERY_KEY_PRESSED;
@@ -386,6 +399,8 @@ static void wipe_all_userdata(void)
 FbLockState do_fastboot_unlock(bool force)
 {
 	int status;
+
+	printf("%s:  +++ \n", __FUNCTION__);
 
 	if (fastboot_get_lock_stat() == FASTBOOT_UNLOCK) {
 		printf("The device is already unlocked\n");

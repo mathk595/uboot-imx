@@ -24,6 +24,7 @@
 enum cmd_part_info {
 	CMD_PART_INFO_START = 0,
 	CMD_PART_INFO_SIZE,
+	CMD_PART_INFO_NUMBER
 };
 
 static int do_part_uuid(int argc, char * const argv[])
@@ -174,6 +175,9 @@ static int do_part_info(int argc, char * const argv[], enum cmd_part_info param)
 	case CMD_PART_INFO_SIZE:
 		snprintf(buf, sizeof(buf), LBAF, info.size);
 		break;
+	case CMD_PART_INFO_NUMBER:
+		snprintf(buf, sizeof(buf), "0x%x", part);
+		break;
 	default:
 		printf("** Unknown cmd_part_info value: %d\n", param);
 		return 1;
@@ -197,6 +201,12 @@ static int do_part_size(int argc, char * const argv[])
 	return do_part_info(argc, argv, CMD_PART_INFO_SIZE);
 }
 
+int do_part_number(int argc, char *const argv[])
+{
+	return do_part_info(argc, argv, CMD_PART_INFO_NUMBER);
+}
+
+
 static int do_part(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	if (argc < 2)
@@ -213,7 +223,10 @@ static int do_part(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #ifdef CONFIG_PARTITION_TYPE_GUID
 	else if (!strcmp(argv[1], "type"))
 		return do_part_type_guid(argc - 2, argv + 2);
-#endif	
+#endif
+	else if (!strcmp(argv[1], "number"))
+		return do_part_number(argc - 2, argv + 2);
+
 
 	return CMD_RET_USAGE;
 }
@@ -242,5 +255,7 @@ U_BOOT_CMD(
 	"part type <interface> <dev>:<part> <varname>\n"
 	"    - set environment variable to partition type GUID\n"
 #endif
-
+    "part number <interface> <dev> <part> <varname>\n"
+	"    - set environment variable to the partition number using the partition name\n"
+	"      part must be specified as partition name"
 );
