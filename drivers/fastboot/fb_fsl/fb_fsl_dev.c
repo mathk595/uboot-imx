@@ -98,10 +98,11 @@ int write_backup_gpt(void *download_buffer)
 	return 0;
 }
 
-static int get_fastboot_target_dev(char *mmc_dev, struct fastboot_ptentry *ptn)
+static int get_fastboot_target_dev(char *mmc_dev, char *mmc_partconf, struct fastboot_ptentry *ptn)
 {
 	int dev = 0;
 	struct mmc *target_mmc;
+	int part = 0;
 
 	/* Support flash bootloader to mmc 'target_ubootdev' devices, if the
 	* 'target_ubootdev' env is not set just flash bootloader to current
@@ -121,10 +122,27 @@ static int get_fastboot_target_dev(char *mmc_dev, struct fastboot_ptentry *ptn)
 			printf("MMC card init failed!\n");
 			return -1;
 		} else {
-			printf("Flash target is mmc%d\n", dev);
+			printf("Flash target is mmc%d part 0x%x\n", dev, EXT_CSD_EXTRACT_BOOT_PART(target_mmc->part_config));
+
 			if (target_mmc->part_config != MMCPART_NOAVAILABLE)
+			{
+				if(EXT_CSD_EXTRACT_BOOT_PART(target_mmc->part_config) == 1)
+				{
+					
+					part = 2;
+					sprintf(mmc_partconf, "mmc partconf %x 1 %x 0", dev, part);
+				}
+				else if(EXT_CSD_EXTRACT_BOOT_PART(target_mmc->part_config) == 2)
+				{
+					part = 1;
+					sprintf(mmc_partconf, "mmc partconf %x 1 %x 0", dev, part);
+				}
+				else
+					part = 0;
+				
 				sprintf(mmc_dev, "mmc dev %x %x", dev, /*slot no*/
-						FASTBOOT_MMC_BOOT_PARTITION_ID/*part no*/);
+						part/*part no*/);
+			}
 			else
 				sprintf(mmc_dev, "mmc dev %x", dev);
 			}
@@ -133,8 +151,11 @@ static int get_fastboot_target_dev(char *mmc_dev, struct fastboot_ptentry *ptn)
 				fastboot_devinfo.dev_id, /*slot no*/
 				ptn->partition_id /*part no*/);
 	else
+	{
 		sprintf(mmc_dev, "mmc dev %x",
 				fastboot_devinfo.dev_id /*slot no*/);
+	}
+
 	return 0;
 }
 
@@ -159,11 +180,12 @@ static void process_flash_blkdev(const char *cmdbuf, void *download_buffer,
 
 			char blk_dev[128];
 			char blk_write[128];
+			char blk_partconf[128];
 			int blkret;
 
 			printf("writing to partition '%s'\n", ptn->name);
 			/* Get target flash device. */
-			if (get_fastboot_target_dev(blk_dev, ptn) != 0)
+			if (get_fastboot_target_dev(blk_dev, blk_partconf, ptn) != 0)
 				return;
 
 			if (!fastboot_parts_is_raw(ptn) &&
@@ -263,6 +285,15 @@ static void process_flash_blkdev(const char *cmdbuf, void *download_buffer,
 						fastboot_fail("Write partition failed", response);
 					} else {
 						printf("Writing '%s' DONE!\n", ptn->name);
+
+						
+						if(strncmp(blk_partconf, "mmc partconf", 12) == 0)
+						{
+							printf("Switch partconf\n");
+							run_command(blk_partconf, 0);
+						}
+						
+
 						fastboot_okay(NULL, response);
 					}
 				}
@@ -289,6 +320,7 @@ static void process_erase_blkdev(const char *cmdbuf, char *response)
 {
 	int mmc_no = 0;
 	char blk_dev[128];
+	char blk_partconf[128];
 	lbaint_t blks, blks_start, blks_size, grp_size;
 	struct mmc *mmc;
 	struct blk_desc *dev_desc;
@@ -325,7 +357,7 @@ static void process_erase_blkdev(const char *cmdbuf, char *response)
 	}
 
 	/* Get and switch target flash device. */
-	if (get_fastboot_target_dev(blk_dev, ptn) != 0) {
+	if (get_fastboot_target_dev(blk_dev, blk_partconf, ptn) != 0) {
 		printf("failed to get target dev!\n");
 		return;
 	} else if (run_command(blk_dev, 0)) {
