@@ -260,7 +260,7 @@
 	"loadfdt=echo loading fdt..;"                                                               \
             "if run loadfdtext4; then echo loadtdext4 ok; else echo trying from fat....; "          \
             "if run loadfdtfat;  then echo loadftdfat ok; fi; fi;\0"                                \
-	"loadbootiot=echo Try Booting IoT Core ...;  part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = 1d30adf8-0aef-4d83-b78c-ac719086c709; then if read mmc ${mmcdev}:${bootpar} 0x40800000 0 1000; then globalpage init 0x407E9000; globalpage add ethaddr; usb start; bootm 0x40800000; fi; fi; done;\0"  \
+	"loadbootiot=echo Try Booting IoT Core ...;  part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = 1d30adf8-0aef-4d83-b78c-ac719086c709; then if read mmc ${mmcdev}:${bootpar} 0x40800000 0 1000; then usb start; bootm 0x40800000; fi; fi; done;\0"  \
 	"mmcboot=echo Booting from mmc ...; " \
 		"run mmcargs; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
