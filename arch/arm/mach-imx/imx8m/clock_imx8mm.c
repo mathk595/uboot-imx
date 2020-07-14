@@ -240,7 +240,7 @@ u32 decode_fracpll(enum clk_root_src frac_pll)
 		return 0;
 	}
 
-	if (!(pll_gnrl_ctl & INTPLL_CLKE_MASK))
+	if (!(pll_gnrl_ctl & INTPLL_DIV2_CLKE_MASK))
 		return 0;
 
 	main_div = (pll_fdiv_ctl0 & INTPLL_MAIN_DIV_MASK) >>
@@ -1093,6 +1093,8 @@ int do_mscale_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv
 
 	freq = decode_intpll(ARM_PLL_CLK);
 	printf("ARM_PLL    %8d MHz\n", freq / 1000000);
+	freq = decode_fracpll(DRAM_PLL1_CLK);
+	printf("DRAM_PLL    %8d MHz\n", freq / 1000000);
 	freq = decode_intpll(SYSTEM_PLL1_800M_CLK);
 	printf("SYS_PLL1_800    %8d MHz\n", freq / 1000000);
 	freq = decode_intpll(SYSTEM_PLL1_400M_CLK);
@@ -1138,8 +1140,7 @@ int do_mscale_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv
 	freq = mxc_get_clock(MXC_I2C_CLK);
 	printf("I2C            %8d MHz\n", freq / 1000000);
 	freq = decode_fracpll(AUDIO_PLL1_CLK);
-	printf("AUDIO_PLL1    %8d MHz\n", freq / 1000000);
-	
+	printf("AUDIO_PLL1    %8d MHz\n", freq / 1000000);	
 	return 0;
 }
 

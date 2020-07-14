@@ -1893,9 +1893,10 @@ miniflash.bin: u-boot-nodtb.bin arch/arm/dts/kuk-trizeps8mini.dtb spl/u-boot-spl
 	@cp ../imx-mkimage/iMX8M/bl31-imx8mm.bin  ../imx-mkimage/iMX8M/bl31.bin
 	@cp u-boot-nodtb.bin                      ../imx-mkimage/iMX8M/
 	@cp arch/arm/dts/kuk-trizeps8mini.dtb     ../imx-mkimage/iMX8M/kuk-trizeps8.dtb
+	@cp arch/arm/dts/kuk-trizeps8mini.dtb     ../imx-mkimage/iMX8M/kuk-trizeps8mini.dtb
 	@cp spl/u-boot-spl.bin                    ../imx-mkimage/iMX8M/
 	@cp u-boot.bin                            ../imx-mkimage/iMX8M/
-	@cd ../imx-mkimage/ ; make SOC=iMX8MM clean flash_trizeps8 ; cd ../uboot-imx
+	@cd ../imx-mkimage/ ; make SOC=iMX8MM clean flash_trizeps8mini ; cd ../uboot-imx
 	@cp ../imx-mkimage/iMX8M/flash.bin miniflash.bin
 	@ls -l miniflash.bin
 
