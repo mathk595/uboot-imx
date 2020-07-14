@@ -30,6 +30,11 @@ extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E304HB;
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E3S4HM;
 extern struct dram_timing_info dram_timing_v1r2_4GB_K4FBE3D4HM;
 
+#ifdef LP_RAM_SETTING
+extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E304HB_LP;
+extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E3S4HM_LP;
+#endif
+
 void spl_dram_init(void)
 {
 	int module;
@@ -52,16 +57,32 @@ void spl_dram_init(void)
 			case KUK_RAMSIZE_2GB:
 				if ( ramskew == 0)
 				{	// Dual-Die 2ch with 2cs
+#ifdef LP_RAM_SETTING
+					printf("Choose dram_timing_v1r2_2GB_K4F6E304HB_LP \r\n");
+					ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB_LP);
+#else
+					printf("Choose dram_timing_v1r2_2GB_K4F6E304HB \r\n");
 					ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+#endif
 				}else
 				{	// Mono-Die 2ch with 1cs
-					ddr_init(&dram_timing_v1r2_2GB_K4F6E3S4HM);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B										
+#ifdef LP_RAM_SETTING
+					printf("Choose dram_timing_v1r2_2GB_K4F6E3S4HM_LP\r\n");
+					ddr_init(&dram_timing_v1r2_2GB_K4F6E3S4HM_LP);	
+					
+#else
+					printf("Choose dram_timing_v1r2_2GB_K4F6E3S4HM\r\n");
+					ddr_init(&dram_timing_v1r2_2GB_K4F6E3S4HM);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+#endif
+								
 				}												
 				break;
-			case KUK_RAMSIZE_4GB:				
+			case KUK_RAMSIZE_4GB:	
+				printf("Choose dram_timing_v1r2_4GB_K4FBE3D4HM\r\n");			
 				ddr_init(&dram_timing_v1r2_4GB_K4FBE3D4HM);	// 4GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
 				break;
 			default:
+				printf("Choose dram_timing_v1r2_2GB_K4F6E304HB\r\n");
 				ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
 				break;
 		}
@@ -124,7 +145,7 @@ static iomux_v3_cfg_t const reset_out_pads[] = {
 
 
 static struct fsl_esdhc_cfg usdhc_cfg[2] = {
-	{USDHC1_BASE_ADDR, 0, 4},
+	{USDHC1_BASE_ADDR, 0, 8},
 	{USDHC2_BASE_ADDR, 0, 4},
 };
 
@@ -191,6 +212,7 @@ int power_init_board(void)
 	int module;
 	//int version;
 	int iovolt;
+	//unsigned int temp;
 	module	= kuk_GetModule();
 	//version = kuk_GetPCBrevision(); 
 	iovolt	= kuk_GetPeripheral( KUK_OTP_IOVOLTAGE);
@@ -211,8 +233,14 @@ int power_init_board(void)
 	/* increase VDD_SOC to typical value 0.85v before first DRAM access */
 	pmic_reg_write(p, BD71837_BUCK1_VOLT_RUN, 0x0f);
 
+#ifdef LP_RAM_SETTING
+	pmic_reg_write(p, BD71837_BUCK5_VOLT, 0x12);
+#else
 	/* increase VDD_DRAM to 0.975v for 3Ghz DDR */
 	pmic_reg_write(p, BD71837_BUCK5_VOLT, 0x83);
+#endif
+	
+
 
 #ifndef CONFIG_IMX8M_LPDDR4
 	/* increase NVCC_DRAM_1V2 to 1.2v for DDR4 */

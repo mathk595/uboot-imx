@@ -1171,6 +1171,26 @@ struct display_info_t const displays[] = {{
 	.bus = LCDIF_BASE_ADDR,
 	.addr = 0,
 	.pixfmt = 24,
+	.detect = adv7535_init,
+	.enable	= do_enable_mipi2hdmi,
+	.mode	= {
+		.name			= "MIPI2HDMI",
+		.refresh		= 60,
+		.xres			= 1920,
+		.yres			= 1080,
+		.pixclock		= 6734, /* 148500000 */
+		.left_margin	= 148,
+		.right_margin	= 88,
+		.upper_margin	= 36,
+		.lower_margin	= 4,
+		.hsync_len		= 44,
+		.vsync_len		= 5,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
 	.detect = detect_ipant7,
 	.enable	= do_enable_mipi2rgb,
 	.mode	= {
@@ -1227,8 +1247,7 @@ struct display_info_t const displays[] = {{
 		.vsync_len		= 5,
 		.sync			= FB_SYNC_EXT,
 		.vmode			= FB_VMODE_NONINTERLACED
-
-} },  
+} }
 };
 size_t display_count = ARRAY_SIZE(displays);
 #endif
