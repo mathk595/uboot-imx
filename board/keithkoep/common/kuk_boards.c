@@ -9,8 +9,10 @@
 #define FUSE14_MODULE(x)        ((x & 0xF0000000)>>28)
 #define FUSE14_MODULE_TRIZEPS   0x1
 #define FUSE14_MODULE_MYON      0x2
-#define FUSE14_MODULE_TRIZEPSr  0x5  // Fix if accidently burned to be Myon
-#define FUSE14_MODULE_MYONr     0x6  // Fix if accidently burned to be Trizeps
+#define FUSE14_MODULE_SBCSOM    0x4
+#define FUSE14_MODULE_TRIZEPSr  0x5  // Fix if accidently burned to be Myon or SBCSOM
+#define FUSE14_MODULE_MYONr     0x6  // Fix if accidently burned to be Trizeps or SBCSOM
+#define FUSE14_MODULE_SBCSOMr   0x7  // Fix if accidently burned to be Myon or Trizeps
 #define FUSE14_USE_OTHER_FUSE   0xF  // Fuse Invalid, Use other Fuse.
 
 #define FUSE14_RAM(x)           ((x & 0x0F000000)>>24)   
@@ -55,6 +57,8 @@ int kuk_GetOTP( int key, int defaultval)
     Trizeps VIII Mini V1R2 with 4GB RAM (Dual-Die K4FBE3D4HM):  fuse prog 14 0 0x14100000        
     Myon II V1R1 with 2GB RAM (Dual-Die K4F6E304HB):            fuse prog 14 0 0x2A000000   // Engineering sample, typ. no fuse set
     Myon II V1R1 with 2GB RAM (Mono-Die K4F6E3S4HM):            fuse prog 14 0 0x22000000
+    SBCSOM V1R1 with 2GB RAM (Mono-Die K4F6E3S4HM):             fuse prog 14 0 0x42000000        
+    SBCSOM V1R1 with 4GB RAM (Dual-Die K4FBE3D4HM):             fuse prog 14 0 0x44000000        
 
     // For now do not fuse other options:
     .. LVDS    
@@ -81,6 +85,8 @@ int kuk_GetOTP( int key, int defaultval)
         case FUSE14_MODULE_TRIZEPSr:
         case FUSE14_MODULE_MYON:
         case FUSE14_MODULE_MYONr:
+        case FUSE14_MODULE_SBCSOM:
+        case FUSE14_MODULE_SBCSOMr:
             fuse14valid = true;
             break;
         default:
@@ -129,6 +135,16 @@ int kuk_GetOTP( int key, int defaultval)
                     ret = KUK_MODULE_TRIZEPS8NANO;
                 }
             }else
+            if ((FUSE14_MODULE(fuse14)==FUSE14_MODULE_SBCSOM)||(FUSE14_MODULE(fuse14)==FUSE14_MODULE_SBCSOMr))
+            {   // SBCSOM
+                if ( is_imx8mm())
+                {
+                    ret = KUK_MODULE_SBCSOM8MINI;
+                }else
+                {   // if ( isimx8mn()) // as soon as this function is available
+                    ret = KUK_MODULE_SBCSOM8NANO;
+                }
+            }else            
             {   // Myon 
                 if ( is_imx8mm())
                 {
@@ -232,7 +248,7 @@ int kuk_GetOTP( int key, int defaultval)
             {   // Trizeps
                 // Fuse currently has no function
             }else
-            {   // Myon
+            {   // Myon or SBCSOM
                 switch( FUSE14_EXTRA( fuse14))
                 {
                     case FUSE14_EXTRA_1V8:
@@ -311,11 +327,13 @@ int kuk_GetRAMWidth( void)
     {
         case KUK_MODULE_TRIZEPS8:
         case KUK_MODULE_TRIZEPS8MINI:
-        case KUK_MODULE_MYON2:
+        case KUK_MODULE_SBCSOM8MINI:
+        case KUK_MODULE_MYON2:        
             width = KUK_RAMWIDTH_32BIT;
             break;
         case KUK_MODULE_TRIZEPS8NANO:
-        case KUK_MODULE_MYON2NANO:
+        case KUK_MODULE_SBCSOM8NANO:
+        case KUK_MODULE_MYON2NANO:    
             width = KUK_RAMWIDTH_16BIT;
             break;
         default:
@@ -394,6 +412,8 @@ int kuk_GetBootStorage( void)
             break;
         case KUK_MODULE_MYON2:
         case KUK_MODULE_MYON2NANO:
+        case KUK_MODULE_SBCSOM8MINI:
+        case KUK_MODULE_SBCSOM8NANO:
 #if (ASSUME__KUK_BOOTSTORAGE == KUK_BOOTSTORAGE_UNKNOWN)
             store = KUK_BOOTSTORAGE_EMMCxGB;
 #endif            
@@ -880,6 +900,151 @@ int kuk_GetArticleNo( char *pArticle, int maxsize )
         pArticle[15]= 0;
         ret = 16;   
     }
+    if (( module == KUK_MODULE_SBCSOM8MINI)||( module == KUK_MODULE_SBCSOM8NANO))
+    {
+        int eth, wlan;
+        if ( module == KUK_MODULE_SBCSOM8MINI)
+        {   // Mini
+            pArticle[0] = '6';
+            pArticle[1] = '4';
+            // Get Processor Skew:
+            if ( speed <= 1600000000)   
+            {   // industrial
+                switch( cpu)
+                {
+                    case MXC_CPU_IMX8MMSL:  pArticle[2] = '1';  break;
+                    case MXC_CPU_IMX8MMS:   pArticle[2] = '3';  break;
+                    case MXC_CPU_IMX8MMDL:  pArticle[2] = '5';  break;
+                    case MXC_CPU_IMX8MMD:   pArticle[2] = '7';  break;
+                    case MXC_CPU_IMX8MML:   pArticle[2] = '9';  break;
+                    case MXC_CPU_IMX8MM:    pArticle[2] = 'B';  break;
+                    default:                pArticle[2] = 'x';  break;
+                }
+            }else
+            {   // consumer
+                switch( cpu)
+                {
+                    case MXC_CPU_IMX8MMSL:  pArticle[2] = '0';  break;
+                    case MXC_CPU_IMX8MMS:   pArticle[2] = '2';  break;
+                    case MXC_CPU_IMX8MMDL:  pArticle[2] = '4';  break;
+                    case MXC_CPU_IMX8MMD:   pArticle[2] = '6';  break;
+                    case MXC_CPU_IMX8MML:   pArticle[2] = '8';  break;
+                    case MXC_CPU_IMX8MM:    pArticle[2] = 'A';  break;
+                    default:                pArticle[2] = 'x';  break;            
+                }
+            }
+        }else
+        {   // Nano:
+            pArticle[0] = '6';
+            pArticle[1] = '4';        
+            // Get Processor Skew:
+            if ( speed <= 1400000000)   
+            {   // industrial
+                switch( cpu)
+                {
+                    case MXC_CPU_IMX8MNSL:  pArticle[2] = 'D';  break;
+                    case MXC_CPU_IMX8MNS:   pArticle[2] = 'C';  break;
+                    case MXC_CPU_IMX8MNDL:  pArticle[2] = 'E';  break;
+                    case MXC_CPU_IMX8MND:   pArticle[2] = 'D';  break;
+                    case MXC_CPU_IMX8MNL:   pArticle[2] = 'C';  break;
+                    case MXC_CPU_IMX8MN:    pArticle[2] = 'E';  break;
+                    default:                pArticle[2] = 'x';  break;
+                }
+            }else
+            {   // consumer
+                switch( cpu)
+                {
+                    case MXC_CPU_IMX8MNSL:  pArticle[2] = 'C';  break;
+                    case MXC_CPU_IMX8MNS:   pArticle[2] = 'E';  break;
+                    case MXC_CPU_IMX8MNDL:  pArticle[2] = 'D';  break;
+                    case MXC_CPU_IMX8MND:   pArticle[2] = 'C';  break;
+                    case MXC_CPU_IMX8MNL:   pArticle[2] = 'E';  break;
+                    case MXC_CPU_IMX8MN:    pArticle[2] = 'D';  break;
+                    default:                pArticle[2] = 'x';  break;            
+                }
+            }
+        }
+        
+        switch ( ramsize)
+        {
+            case KUK_RAMSIZE_512MB: pArticle[3] = '0';  break;
+            case KUK_RAMSIZE_1GB:   pArticle[3] = '1';  break;
+            case KUK_RAMSIZE_2GB:   pArticle[3] = '2';  break;
+            case KUK_RAMSIZE_3GB:   pArticle[3] = '3';  break;
+            case KUK_RAMSIZE_4GB:   pArticle[3] = '4';  break;
+            case KUK_RAMSIZE_8GB:   pArticle[3] = '8';  break;
+            default:                pArticle[3] = 'x';  break;
+        }
+        if ( pcbrev == KUK_PCBREV_UNKNOWN)
+            pArticle[4] = 'x';
+        else
+            pArticle[4] = pcbrev + '0';
+        
+        pArticle[5] = '.';
+
+        switch( kuk_GetTemperatureRange())
+        {
+            case KUK_TEMP_COMMERCIAL_0_70:      pArticle[6] = 'C';  break;
+            case KUK_TEMP_EXTENDED_m25_85:      pArticle[6] = 'E';  break;
+            case KUK_TEMP_INDUSTRIAL_m40_85:    pArticle[6] = 'I';  break;
+            default:                            pArticle[6] = 'x';  break;
+        }      
+
+        pArticle[7] = 'x';
+        pArticle[8] = 'x';    
+        eth = kuk_GetPeripheral( KUK_PERIPHERAL_ETHERNET);
+        wlan = kuk_GetPeripheral( KUK_PERIPHERAL_WIRELESS);
+        pArticle[9] = 'x';      // Ethernet
+        if (( eth != KUK_ETHERNET_UNKNOWN)&&( wlan != KUK_WIRELESS_UNKNOWN))
+        {
+            if ( wlan == KUK_WIRELESS_NONE)
+            {
+                if ( eth == KUK_ETHERNET_NONE)
+                {
+                    pArticle[9] = '0';
+                }else
+                {
+                    pArticle[9] = '1';
+                }
+            }
+            if ( wlan == KUK_WIRELESS_HD_SPB228)
+            {
+                if ( eth == KUK_ETHERNET_NONE)
+                {
+                    pArticle[9] = '2';
+                }else
+                {
+                    pArticle[9] = '3';
+                }
+            }
+            if ( wlan == KUK_WIRELESS_SILEX_SXPCEAC2)
+            {
+                if ( eth == KUK_ETHERNET_NONE)
+                {
+                    pArticle[9] = '4';
+                }else
+                {
+                    pArticle[9] = '5';
+                }
+            }
+        }
+        
+        switch( kuk_GetBootStorage())
+        {
+            case KUK_BOOTSTORAGE_SDCARD:    pArticle[10]= '0'; break;
+            case KUK_BOOTSTORAGE_EMMC4GB:   pArticle[10]= '1'; break;
+            case KUK_BOOTSTORAGE_EMMC8GB:   pArticle[10]= '2'; break;
+            case KUK_BOOTSTORAGE_EMMC16GB:  pArticle[10]= '3'; break;
+            case KUK_BOOTSTORAGE_EMMC32GB:  pArticle[10]= '4'; break;
+            default:                        pArticle[10]= 'x'; break;
+        }        
+        pArticle[11]= '.';     
+        pArticle[12]= 'H';     
+        pArticle[13]= 'x';     
+        pArticle[14]= 'x';     
+        pArticle[15]= 0;
+        ret = 16;   
+    }
     if (( module == KUK_MODULE_MYON2)||( module == KUK_MODULE_MYON2NANO))
     {
         if ( module == KUK_MODULE_MYON2)
@@ -987,7 +1152,7 @@ int kuk_GetArticleNo( char *pArticle, int maxsize )
 }
 
 const char* cModuleName[] = {
-    "Unknown", "Trizeps VIII", "Trizeps VIII Mini", "Trizeps VIII Nano", "Myon II", "Myon II Nano"
+    "Unknown", "Trizeps VIII", "Trizeps VIII Mini", "Trizeps VIII Nano", "Myon II", "Myon II Nano", "SBCSOM", "SBCSOM Nano"
 };
 const char* cRAMsize[] = {
     "Unknown", "512MB","1GB","2GB"
