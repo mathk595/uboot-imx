@@ -729,6 +729,22 @@ static void lvds_init(struct display_info_t const *dev)
 		valb[29] = 0x03;
 		valb[33] = 0x30;
     }
+	else if(strncmp(dev->mode.name, "PCONXS", 6) == 0)
+	{
+		printf("%s: -> PCONXS\n", __func__);
+		valb[2]  = 0x03;	
+		valb[3] = 0x14;
+		valb[5] = 0x20;
+		valb[7] = 0x3D;	
+		valb[17] = 0x58;
+		valb[18] = 0x02;
+		valb[21] = 0x20;
+		valb[25] = 0x04;
+		valb[29] = 0x01;
+		valb[33] = 0xA0;
+		valb[37] = 0xA0;
+		valb[39] = 0x0C;
+    }
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
@@ -1081,6 +1097,7 @@ void do_enable_mipi2hdmi(struct display_info_t const *dev)
 
 #define FOCALTECH_ID 0x38
 #define DATAIMAGE_ID 0x5C
+#define GOODIX_ID    0x5D //0x14
 
 static int detect_ipant7(struct display_info_t const *dev)
 {
@@ -1091,6 +1108,7 @@ static int detect_ipant7(struct display_info_t const *dev)
 	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
 	
+	mdelay(10);
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
@@ -1121,6 +1139,8 @@ static int detect_ipant10(struct display_info_t const *dev)
 	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
 
+	mdelay(10);
+
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
 		printf("%s: No bus %d\n", __func__, i2c_bus);
@@ -1137,6 +1157,47 @@ static int detect_ipant10(struct display_info_t const *dev)
 	kuk_panel_drv.lanes = 4;
 	kuk_panel_drv.name = "IPANT10";
 
+	return 1;
+}
+
+static int detect_pconxs(struct display_info_t const *dev)
+{
+	struct udevice *bus, *main_dev;
+	int i2c_bus = 1;
+	int ret;
+	
+	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+	gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
+
+	gpio_request(IMX_GPIO_NR(1, 5), "LVDS EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 5), 1);
+	
+	gpio_request(IMX_GPIO_NR(4, 14), "BL EN");
+	gpio_direction_output(IMX_GPIO_NR(4, 14), 1);
+
+	gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT PWM");
+	gpio_direction_output(IMX_GPIO_NR(1, 1), 1);
+	//gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
+
+	mdelay(10);
+	
+
+	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+	if (ret) {
+		printf("%s: No bus %d\n", __func__, i2c_bus);
+		return 0;
+	}
+	
+	ret = dm_i2c_probe(bus, GOODIX_ID, 0, &main_dev);
+	if (ret) {
+		printf("%s: Can't find device id=0x%x, on bus %d\n",
+			__func__, GOODIX_ID, i2c_bus);
+		return 0;
+	}
+	
+	kuk_panel_drv.lanes = 4;
+	kuk_panel_drv.name = "PCONXS";
+	
 	return 1;
 }
 
@@ -1158,6 +1219,26 @@ struct display_info_t const displays[] = {{
 		.refresh		= 60,
 		.xres			= 1024,
 		.yres			= 768,
+		.pixclock		= 16835, /* 59400000 // 65000000 */
+		.left_margin	= 156,
+		.right_margin	= 156,
+		.upper_margin	= 21,
+		.lower_margin	= 7,
+		.hsync_len		= 8,
+		.vsync_len		= 10,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_pconxs,
+	.enable	= do_enable_mipi2lvds,
+	.mode	= {
+		.name			= "PCONXS",
+		.refresh		= 60,
+		.xres			= 1024,
+		.yres			= 600,
 		.pixclock		= 16835, /* 59400000 // 65000000 */
 		.left_margin	= 156,
 		.right_margin	= 156,

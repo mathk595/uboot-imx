@@ -235,16 +235,15 @@ int kuk_GetOTP( int key, int defaultval)
             {   // Myon
                 switch( FUSE14_EXTRA( fuse14))
                 {
-                    case FUSE14_EXTRA_1V8:
-                        ret = KUK_IOVOLTAGE_1V8;
-                        break;
                     case FUSE14_EXTRA_3V3:
                         ret = KUK_IOVOLTAGE_3V3;
                         break;
                     case FUSE14_EXTRA_CUSTOM:
                         ret = KUK_IOVOLTAGE_CUSTOM;
                         break;
+                    case FUSE14_EXTRA_1V8:
                     default:
+                        ret = KUK_IOVOLTAGE_1V8;
                         break;                    
                 }
             }
