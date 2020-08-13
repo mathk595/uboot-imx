@@ -784,6 +784,10 @@ static int mmc_partconf_print(struct mmc *mmc)
 	ack = EXT_CSD_EXTRACT_BOOT_ACK(mmc->part_config);
 	part = EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config);
 
+	env_set_ulong("emmcbootaccess", access);
+	env_set_ulong("emmcbootack", ack);
+	env_set_ulong("emmcbootpart", part);
+
 	printf("EXT_CSD[179], PARTITION_CONFIG:\n"
 		"BOOT_ACK: 0x%x\n"
 		"BOOT_PARTITION_ENABLE: 0x%x\n"

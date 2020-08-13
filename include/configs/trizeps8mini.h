@@ -260,7 +260,9 @@
 	"loadfdt=echo loading fdt..;"                                                               \
             "if run loadfdtext4; then echo loadtdext4 ok; else echo trying from fat....; "          \
             "if run loadfdtfat;  then echo loadftdfat ok; fi; fi;\0"                                \
-	"loadbootiot=echo Try Booting IoT Core ...;  part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = 1d30adf8-0aef-4d83-b78c-ac719086c709; then if read mmc ${mmcdev}:${bootpar} 0x40800000 0 1000; then usb start; bootm 0x40800000; fi; fi; done;\0"  \
+	"loadbootiot=echo Try Booting IoT Core ...;  	part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = 1d30adf8-0aef-4d83-b78c-ac719086c709; then if read mmc ${mmcdev}:${bootpar} 0x40800000 0 1000; then usb start; bootm 0x40800000; fi; fi; done;\0"  \
+	"loadbootenterprise=echo Try Booting IoT...;  	part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = c12a7328-f81f-11d2-ba4b-00a0c93ec93b; then if mmc dev ${mmcdev} ${emmcbootpart}; mmc read 0x40800000 0xBFA 1000; then usb start; mmc dev 0 1; bootm 0x40800000; fi; fi; done;\0"  \
+	"loadinstallenterprise=echo Try Install IoT...; part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = c12a7328-f81f-11d2-ba4b-00a0c93ec93b; then if mmc dev ${mmcdev} ${emmcbootpart}; mmc read 0x40800000 0xBFA 1000; then usb start; mmc dev 0 1; bootm 0x40800000; fi; fi; done;\0"  \
 	"mmcboot=echo Booting from mmc ...; " \
 		"run mmcargs; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
@@ -295,8 +297,10 @@
 
 #ifndef CONFIG_BOOTCOMMAND
 #define CONFIG_BOOTCOMMAND \
-	"mmc dev ${mmcdev}; if mmc rescan; "\
+	"mmc dev ${mmcdev};mmc partconf ${mmcdev}; if mmc rescan; "\
         "then "\
+		"run loadbootenterprise; " \
+		"run loadinstallenterprise; " \
 		"run loadbootiot; " \
 	     "if              run loadbootscriptext4;       then run bootscript; "    \
 	     "else if         run loadbootscriptfat;        then run bootscript; "    \
