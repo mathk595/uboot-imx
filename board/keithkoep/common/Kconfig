@@ -73,6 +73,22 @@ config TRIZEPS8MINI_V1R2_2GB
        bool "Select V1R2 TRIZEPS8MINI with 2GB RAM and override possibly set OTP fuses"
        default n
 
+config TRIZEPS8MINI_V1R2_4GB
+       bool "Select V1R2 TRIZEPS8MINI with 4GB RAM and override possibly set OTP fuses"
+       default n
+
+config SBCSOM
+       bool "Select SBCSOM, if no rev is set, OTP will select targetboard info"
+       default n
+
+config SBCSOM8MINI_V1R1_2GB
+       bool "Select V1R1 SBSCOM with i.MX 8M Mini with 2GB RAM and override possibly set OTP fuses"
+       default n
+
+config SBCSOM8MINI_V1R1_4GB
+       bool "Select V1R1 SBSCOM with i.MX 8M Mini with 4GB RAM and override possibly set OTP fuses"
+       default n
+
 config MOUNTOPTION_EMMC
        bool "Select Module has EMMC instead of SD-slot."
        default n
@@ -83,4 +99,8 @@ config MOUNTOPTION_SD
 
 config BOOT_EXTSDCARD
        bool "Select to boot Image from external SD-Card"
+       default n
+
+config BOOT_SDCARD3
+       bool "Select to boot Image from SD-Card Slot 3"
        default n

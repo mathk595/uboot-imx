@@ -187,9 +187,57 @@
 #endif
 #endif
 #else
+#ifdef CONFIG_TRIZEPS8MINI_V1R2_4GB
+#ifdef CONFIG_MOUNTOPTION_EMMC
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x14100000; run fuse_emmc \0" 
+#else
+#ifdef CONFIG_MOUNTOPTION_SD
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x14100000; run fuse_sd \0" 
+#else
 #define KUK_FUSE_PRODUCTION
 #endif
 #endif
+#else
+#ifdef CONFIG_SBCSOM8MINI_V1R1_2GB
+#ifdef CONFIG_MOUNTOPTION_EMMC
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x42000000; run fuse_emmc \0" 
+#else
+#ifdef CONFIG_MOUNTOPTION_SD
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x42000000; run fuse_sd \0" 
+#else
+#define KUK_FUSE_PRODUCTION
+#endif
+#endif
+#else
+#ifdef CONFIG_SBCSOM8MINI_V1R1_4GB
+#ifdef CONFIG_MOUNTOPTION_EMMC
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x44100000; run fuse_emmc \0" 
+#else
+#ifdef CONFIG_MOUNTOPTION_SD
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x44100000; run fuse_sd \0" 
+#else
+#define KUK_FUSE_PRODUCTION
+#endif
+#endif
+#else
+#define KUK_FUSE_PRODUCTION
+#endif
+#endif
+#endif
+#endif
+#endif  
 
 /* Initial environment variables */
 #if defined(CONFIG_NAND_BOOT)
@@ -349,8 +397,13 @@
 #define CONFIG_SYS_MMC_ENV_DEV		1                 
 #define CONFIG_MMCROOT			"/dev/mmcblk1p2"  
 #else
+#ifdef BOOT_SDCARD3
+#define CONFIG_SYS_MMC_ENV_DEV		2                 
+#define CONFIG_MMCROOT			"/dev/mmcblk1p3"  
+#else
 #define CONFIG_SYS_MMC_ENV_DEV		0                 /* USDHC2 */
 #define CONFIG_MMCROOT			"/dev/mmcblk0p2"  /* USDHC2 */
+#endif
 #endif
 
 /* Size of malloc() pool */
@@ -385,8 +438,11 @@
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 
-
+#ifdef CONFIG_SBCSOM
+#define CONFIG_SYS_FSL_USDHC_NUM	3
+#else
 #define CONFIG_SYS_FSL_USDHC_NUM	2
+#endif
 #define CONFIG_SYS_FSL_ESDHC_ADDR       0
 
 #define CONFIG_SUPPORT_EMMC_BOOT	/* eMMC specific */

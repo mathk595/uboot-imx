@@ -133,6 +133,16 @@ static iomux_v3_cfg_t const usdhc2_pads[] = {
 	IMX8MM_PAD_SD2_DATA3_USDHC2_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 };
 
+static iomux_v3_cfg_t const usdhc3_pads[] = {
+	IMX8MM_PAD_NAND_WE_B_USDHC3_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	IMX8MM_PAD_NAND_WP_B_USDHC3_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	IMX8MM_PAD_NAND_DATA04_USDHC3_DATA0 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	IMX8MM_PAD_NAND_DATA05_USDHC3_DATA1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	IMX8MM_PAD_NAND_DATA06_USDHC3_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+	IMX8MM_PAD_NAND_DATA07_USDHC3_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+};
+
+
 #define RST_PAD IMX_GPIO_NR(3, 14)
 static iomux_v3_cfg_t const reset_out_pads[] = {
 	IMX8MM_PAD_NAND_DQS_GPIO3_IO14 | MUX_PAD_CTRL((PAD_CTL_HYS | PAD_CTL_DSE1)) 
@@ -144,9 +154,10 @@ static iomux_v3_cfg_t const reset_out_pads[] = {
  */
 
 
-static struct fsl_esdhc_cfg usdhc_cfg[2] = {
+static struct fsl_esdhc_cfg usdhc_cfg[3] = {
 	{USDHC1_BASE_ADDR, 0, 8},
 	{USDHC2_BASE_ADDR, 0, 4},
+	{USDHC3_BASE_ADDR, 0, 4},
 };
 
 int board_mmc_init(bd_t *bis)
@@ -157,6 +168,7 @@ int board_mmc_init(bd_t *bis)
 	 * (U-Boot device node)    (Physical Port)
 	 * mmc0                    USDHC1
 	 * mmc1                    USDHC2
+	 * mmc2                    USDHC3   (only on SBCSOM)
 	 */
 	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
 		switch (i) {
@@ -172,6 +184,12 @@ int board_mmc_init(bd_t *bis)
 			imx_iomux_v3_setup_multiple_pads(
 				usdhc2_pads, ARRAY_SIZE(usdhc2_pads));
 			break;
+        case 2:
+			init_clk_usdhc(2);
+			usdhc_cfg[2].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
+			imx_iomux_v3_setup_multiple_pads(
+				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
+            break;
 		default:
 			printf("Warning: you configured more USDHC controllers"
 				"(%d) than supported by the board\n", i + 1);
@@ -196,6 +214,9 @@ int board_mmc_getcd(struct mmc *mmc)
 		ret = 1;
 		break;
 	case USDHC2_BASE_ADDR:
+		ret = 1;
+		return ret;
+	case USDHC3_BASE_ADDR:
 		ret = 1;
 		return ret;
 	}
@@ -248,7 +269,7 @@ int power_init_board(void)
 #endif
 
 
-	if ( module == KUK_MODULE_TRIZEPS8MINI)
+	if (( module == KUK_MODULE_TRIZEPS8MINI)||( module == KUK_MODULE_TRIZEPS8NANO))
 	{	// Trizeps
 		/* Set VDD_FPGA_MIPI to 2.5V */
 		pmic_reg_write(p, BD71837_LDO5_VOLT, 0xC7);
@@ -259,6 +280,10 @@ int power_init_board(void)
 			pmic_reg_write(p, BD71837_LDO6_VOLT, 0xC4);
 		}
 	}else
+    if (( module == KUK_MODULE_SBCSOM8MINI)||( module == KUK_MODULE_SBCSOM8NANO))
+    {   // SBCSOM
+        // Nothing additional todo				
+    }else
 	{	// Myon
 		switch( iovolt)
 		{			
@@ -278,7 +303,8 @@ int power_init_board(void)
 	/* lock the PMIC regs */
 	pmic_reg_write(p, BD71837_REGLOCK, 0x11);
 
-	if (( module == KUK_MODULE_MYON2)||( module == KUK_MODULE_MYON2NANO))
+	if (( module == KUK_MODULE_MYON2)||( module == KUK_MODULE_MYON2NANO)||
+        ( module == KUK_MODULE_SBCSOM8MINI)||( module == KUK_MODULE_SBCSOM8NANO))
 	{
 		/* Set Reset-out */
 		imx_iomux_v3_setup_multiple_pads(
