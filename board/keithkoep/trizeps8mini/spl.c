@@ -26,6 +26,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #include "../common/kuk_boards.h"
 
 extern struct dram_timing_info dram_timing_v1r1;
+extern struct dram_timing_info dram_timing_v1r2_1GB_K4F8E304HB;
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E304HB;
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E3S4HM;
 extern struct dram_timing_info dram_timing_v1r2_4GB_K4FBE3D4HM;
@@ -54,6 +55,10 @@ void spl_dram_init(void)
 	{
 		switch( ramsize)
 		{
+            case KUK_RAMSIZE_1GB:
+				printf("Choose dram_timing_v1r2_1GB_K4F8E304HB\r\n");			
+				ddr_init(&dram_timing_v1r2_1GB_K4F8E304HB);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+                break;
 			case KUK_RAMSIZE_2GB:
 				if ( ramskew == 0)
 				{	// Dual-Die 2ch with 2cs
@@ -283,6 +288,10 @@ int power_init_board(void)
     if (( module == KUK_MODULE_SBCSOM8MINI)||( module == KUK_MODULE_SBCSOM8NANO))
     {   // SBCSOM
         // Nothing additional todo				
+    }else
+    if (( module == GUF_MODULE_TANARO))
+    {   // Tanaro platform
+        // Add additional init here:
     }else
 	{	// Myon
 		switch( iovolt)
