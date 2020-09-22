@@ -1019,6 +1019,27 @@ void do_enable_mipi2rgb(struct display_info_t const *dev)
 	imx_mipi_dsi_bridge_attach(&kuk_panel_drv);
 }
 
+void do_display_default(struct display_info_t const *dev)
+{
+    int module;
+    module = kuk_GetModule();
+
+    switch( module) {
+        case KUK_MODULE_SBCSOM8MINI:
+        case KUK_MODULE_SBCSOM8NANO:
+           	gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT_ENABLE");
+   	        gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT_PWM");
+           	gpio_request(IMX_GPIO_NR(1, 5), "DISPLAY_ENABLE");
+
+	        gpio_direction_output(IMX_GPIO_NR(3, 22), 0);
+	        gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
+	        gpio_direction_output(IMX_GPIO_NR(1, 5), 0);
+            break;
+        default:
+            break;
+    }
+}
+
 void do_enable_mipi2lvds(struct display_info_t const *dev)
 {
 	printf("%s: Enable %s \n", __func__, dev->mode.name);
@@ -1152,7 +1173,7 @@ struct display_info_t const displays[] = {{
 	.addr = 0,
 	.pixfmt = 24,
 	.detect = NULL,
-	.enable	= do_enable_mipi2lvds,
+	.enable	= do_display_default,
 	.mode	= {
 		.name			= "MIPI2KUK",
 		.refresh		= 60,
