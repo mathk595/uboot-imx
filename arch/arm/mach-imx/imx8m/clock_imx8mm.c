@@ -717,8 +717,8 @@ int clock_init()
 	clock_set_target_val(ARM_A53_CLK_ROOT, CLK_ROOT_ON | \
 			     CLK_ROOT_SOURCE_SEL(2));
 
-	//intpll_configure(ANATOP_ARM_PLL, MHZ(1200));
-	intpll_configure(ANATOP_ARM_PLL, MHZ(1800));
+	intpll_configure(ANATOP_ARM_PLL, MHZ(1200));
+	//intpll_configure(ANATOP_ARM_PLL, MHZ(1800));
 
 #if 0
 	//Changed to 18.09 version -> old linux kernel not bootable
