@@ -118,7 +118,11 @@
 
 #define CONFIG_FEC_MXC
 #define CONFIG_FEC_XCV_TYPE             RGMII
+#ifdef CONFIG_SBCSOM
+#define CONFIG_FEC_MXC_PHYADDR          0
+#else
 #define CONFIG_FEC_MXC_PHYADDR          4
+#endif
 #define FEC_QUIRK_ENET_MAC
 
 #define CONFIG_PHY_GIGE
@@ -260,7 +264,7 @@
 	CONFIG_MFG_ENV_SETTINGS \
 	JAILHOUSE_ENV \
 	KUK_FUSE_PRODUCTION \
-	"pcie=wifionboard\0"                              \
+	"pcie=none\0"                              \
         "append_bootargs=androidboot.selinux=permissive\0"\
 	"script=boot.scr\0" \
 	"splashpos=m,m\0"			   \
@@ -309,8 +313,8 @@
             "if run loadfdtext4; then echo loadtdext4 ok; else echo trying from fat....; "          \
             "if run loadfdtfat;  then echo loadftdfat ok; fi; fi;\0"                                \
 	"loadbootiot=echo Try Booting IoT Core ...;  	part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = 1d30adf8-0aef-4d83-b78c-ac719086c709; then if read mmc ${mmcdev}:${bootpar} 0x40800000 0 1000; then usb start; bootm 0x40800000; fi; fi; done;\0"  \
-	"loadbootenterprise=echo Try Booting IoT...;  	part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = c12a7328-f81f-11d2-ba4b-00a0c93ec93b; then if mmc dev ${mmcdev} ${emmcbootpart}; mmc read 0x40800000 0xBFA 1000; then usb start; mmc dev 0 1; bootm 0x40800000; fi; fi; done;\0"  \
-	"loadinstallenterprise=echo Try Install IoT...; part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = c12a7328-f81f-11d2-ba4b-00a0c93ec93b; then if mmc dev ${mmcdev} ${emmcbootpart}; mmc read 0x40800000 0xBFA 1000; then usb start; mmc dev 0 1; bootm 0x40800000; fi; fi; done;\0"  \
+	"loadbootenterprise=echo Try Booting IoT...;  	part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = c12a7328-f81f-11d2-ba4b-00a0c93ec93b; then if mmc dev ${mmcdev} ${emmcbootpart}; mmc read 0x40800000 0xBFA 1000; then usb start; mmc dev ${mmcdev} 1; bootm 0x40800000; fi; fi; done;\0"  \
+	"loadinstallenterprise=echo Try Install IoT...; part list mmc 1 devplist; for bootpar in ${devplist}; do part type mmc 1:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = c12a7328-f81f-11d2-ba4b-00a0c93ec93b; then if mmc dev ${mmcdev} ${emmcbootpart}; mmc read 0x40800000 0xBFA 1000; then usb start; mmc dev ${mmcdev} 1; bootm 0x40800000; fi; fi; done;\0"  \
 	"mmcboot=echo Booting from mmc ...; " \
 		"run mmcargs; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \

@@ -30,6 +30,8 @@ extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E304HB;
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E3S4HM;
 extern struct dram_timing_info dram_timing_v1r2_4GB_K4FBE3D4HM;
 
+//#define LP_RAM_SETTING 1
+
 #ifdef LP_RAM_SETTING
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E304HB_LP;
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E3S4HM_LP;
