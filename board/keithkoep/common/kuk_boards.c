@@ -53,10 +53,14 @@ int kuk_GetOTP( int key, int defaultval)
     i.e. 
     Trizeps VIII Mini V1R1 with 2GB RAM:                        fuse prog 14 0 0x1A000000
     Trizeps VIII Mini V1R2 with 2GB RAM (Dual-Die K4F6E304HB):  fuse prog 14 0 0x1A100000   // Engineering sample, typ. no fuse set
+    Trizeps VIII Mini V1R1 with 1GB RAM (K4F8E304HB,K4F8E3S4HB):fuse prog 14 0 0x11100000   // Dual&Mono-Die both use 1 chip-select.
     Trizeps VIII Mini V1R2 with 2GB RAM (Mono-Die K4F6E3S4HM):  fuse prog 14 0 0x12100000        
     Trizeps VIII Mini V1R2 with 4GB RAM (Dual-Die K4FBE3D4HM):  fuse prog 14 0 0x14100000        
+    Myon II V1R1 with 1GB RAM (K4F8E304HB,K4F8E3S4HB):          fuse prog 14 0 0x21000000
     Myon II V1R1 with 2GB RAM (Dual-Die K4F6E304HB):            fuse prog 14 0 0x2A000000   // Engineering sample, typ. no fuse set
     Myon II V1R1 with 2GB RAM (Mono-Die K4F6E3S4HM):            fuse prog 14 0 0x22000000
+    Myon II V1R1 with 4GB RAM (Dual-Die K4FBE3D4HM):            fuse prog 14 0 0x24000000
+    SBCSOM V1R1 with 1GB RAM (K4F8E304HB,K4F8E3S4HB):           fuse prog 14 0 0x41000000        
     SBCSOM V1R1 with 2GB RAM (Mono-Die K4F6E3S4HM):             fuse prog 14 0 0x42000000        
     SBCSOM V1R1 with 4GB RAM (Dual-Die K4FBE3D4HM):             fuse prog 14 0 0x44000000        
 
@@ -1151,10 +1155,7 @@ int kuk_GetArticleNo( char *pArticle, int maxsize )
 }
 
 const char* cModuleName[] = {
-    "Unknown", "Trizeps VIII", "Trizeps VIII Mini", "Trizeps VIII Nano", "Myon II", "Myon II Nano", "SBCSOM", "SBCSOM Nano"
-};
-const char* cRAMsize[] = {
-    "Unknown", "512MB","1GB","2GB"
+    "Unknown", "Trizeps VIII", "Trizeps VIII Mini", "Trizeps VIII Nano", "Myon II", "Myon II Nano", "SBCSOM", "SBCSOM Nano", "Tanaro"
 };
 const char* cStore[] = {
     "?", "uSD-card", "eMMC", "4GB eMMC", "8GB eMMC", "16GB eMMC", "32GB eMMC"
@@ -1256,11 +1257,17 @@ int kuk_GetDescription( char *pDescription, int maxsize )
         snprintf( &str_cpu[0], sizeof(str_cpu), "i.MX 8M Nano %dMHz", speed );
     }
 
+    if ( module >= GUF_MODULE_TANARO)
+    {
+        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "This is a Garz & Fricke GmbH  %s %s running a %s with %s,%dbit RAM and booting from %s.\n",
+                cModuleName[ module], str_rev, str_cpu, str_ramsize, kuk_GetRAMWidth(), cStore[ store]
+            );
+    }else{
+        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "This is a Keith & Koep GmbH  %s %s running a %s with %s,%dbit RAM and booting from %s.\n",
+                cModuleName[ module], str_rev, str_cpu, str_ramsize, kuk_GetRAMWidth(), cStore[ store]
+            );
+    }
 
-    cnt += snprintf(&pDescription[cnt], maxsize - cnt, "This is a Keith & Koep GmbH  %s %s running a %s with %s,%dbit RAM and booting from %s.\n",
-            cModuleName[ module], str_rev, str_cpu, str_ramsize, kuk_GetRAMWidth(), cStore[ store]
-        );
-        
     switch( kuk_GetTemperatureRange())
     {
         case KUK_TEMP_EXTENDED_m25_85:      cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Extended Temperature-Range\n"); break;
@@ -1334,6 +1341,7 @@ int kuk_GetDescription( char *pDescription, int maxsize )
         case KUK_AUDIO_NONE:        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "No Audio\n");  break;
         case KUK_AUDIO_WM8983:      cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Audio WM8983\n");  break;
         case KUK_AUDIO_WM8978:      cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Audio WM8978\n");  break;
+        case KUK_AUDIO_TAS2552:     cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Audio TAS2552\n");  break;
         default:    break;
     }
 

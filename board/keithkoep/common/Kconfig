@@ -65,8 +65,20 @@ config TRIZEPS8MINI
        bool "Select TRIZEPS8MINI, if no rev is set, OTP will select targetboard info"
        default n
 
+config MYON2_V1R1_1GB
+       bool "Select V1R1 MYON2 with 1GB RAM and override possibly set OTP fuses"
+       default n
+
 config MYON2_V1R1_2GB
        bool "Select V1R1 MYON2 with 2GB RAM and override possibly set OTP fuses"
+       default n
+
+config MYON2_V1R1_4GB
+       bool "Select V1R1 MYON2 with 4GB RAM and override possibly set OTP fuses"
+       default n
+
+config TRIZEPS8MINI_V1R2_1GB
+       bool "Select V1R2 TRIZEPS8MINI with 1GB RAM and override possibly set OTP fuses"
        default n
 
 config TRIZEPS8MINI_V1R2_2GB
@@ -81,12 +93,32 @@ config SBCSOM
        bool "Select SBCSOM, if no rev is set, OTP will select targetboard info"
        default n
 
+config SBCSOM8MINI_V1R1_1GB
+       bool "Select V1R1 SBSCOM with i.MX 8M Mini with 1GB RAM and override possibly set OTP fuses"
+       default n
+
 config SBCSOM8MINI_V1R1_2GB
        bool "Select V1R1 SBSCOM with i.MX 8M Mini with 2GB RAM and override possibly set OTP fuses"
        default n
 
 config SBCSOM8MINI_V1R1_4GB
        bool "Select V1R1 SBSCOM with i.MX 8M Mini with 4GB RAM and override possibly set OTP fuses"
+       default n
+
+config TANARO
+       bool "Select TANARO, if no rev is set, OTP will select targetboard info"
+       default n
+
+config TANARO_V1R1_1GB
+       bool "Select V1R1 TANARO with i.MX 8M Mini with 1GB RAM and override possibly set OTP fuses"
+       default n
+
+config TANARO_V1R1_2GB
+       bool "Select V1R1 TANARO with i.MX 8M Mini with 2GB RAM and override possibly set OTP fuses"
+       default n
+
+config TANARO_V1R1_4GB
+       bool "Select V1R1 TANARO with i.MX 8M Mini with 4GB RAM and override possibly set OTP fuses"
        default n
 
 config MOUNTOPTION_EMMC

@@ -171,10 +171,35 @@
 	"fuse_emmc=fuse prog 1 3 0x10002012 \0" \
 	"fuse_sd=fuse prog 1 3 0x10001010 \0" \
 
+#ifdef CONFIG_MYON2_V1R1_1GB
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x21000000; run fuse_emmc \0" 
+#else
 #ifdef CONFIG_MYON2_V1R1_2GB
 #define KUK_FUSE_PRODUCTION \
 	KUK_FUSE_SETTINGS \
 	"fuse_config=fuse prog 14 0 0x22000000; run fuse_emmc \0" 
+#else
+#ifdef CONFIG_MYON2_V1R1_4GB
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x24000000; run fuse_emmc \0" 
+#else
+#ifdef CONFIG_TRIZEPS8MINI_V1R2_1GB
+#ifdef CONFIG_MOUNTOPTION_EMMC
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x11100000; run fuse_emmc \0" 
+#else
+#ifdef CONFIG_MOUNTOPTION_SD
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x11100000; run fuse_sd \0" 
+#else
+#define KUK_FUSE_PRODUCTION
+#endif
+#endif
 #else
 #ifdef CONFIG_TRIZEPS8MINI_V1R2_2GB
 #ifdef CONFIG_MOUNTOPTION_EMMC
@@ -206,6 +231,21 @@
 #endif
 #endif
 #else
+#ifdef CONFIG_SBCSOM8MINI_V1R1_1GB
+#ifdef CONFIG_MOUNTOPTION_EMMC
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x41000000; run fuse_emmc \0" 
+#else
+#ifdef CONFIG_MOUNTOPTION_SD
+#define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x41000000; run fuse_sd \0" 
+#else
+#define KUK_FUSE_PRODUCTION
+#endif
+#endif
+#else
 #ifdef CONFIG_SBCSOM8MINI_V1R1_2GB
 #ifdef CONFIG_MOUNTOPTION_EMMC
 #define KUK_FUSE_PRODUCTION \
@@ -225,12 +265,12 @@
 #ifdef CONFIG_MOUNTOPTION_EMMC
 #define KUK_FUSE_PRODUCTION \
 	KUK_FUSE_SETTINGS \
-	"fuse_config=fuse prog 14 0 0x44100000; run fuse_emmc \0" 
+	"fuse_config=fuse prog 14 0 0x44000000; run fuse_emmc \0" 
 #else
 #ifdef CONFIG_MOUNTOPTION_SD
 #define KUK_FUSE_PRODUCTION \
 	KUK_FUSE_SETTINGS \
-	"fuse_config=fuse prog 14 0 0x44100000; run fuse_sd \0" 
+	"fuse_config=fuse prog 14 0 0x44000000; run fuse_sd \0" 
 #else
 #define KUK_FUSE_PRODUCTION
 #endif
@@ -242,6 +282,10 @@
 #endif
 #endif
 #endif  
+#endif
+#endif 
+#endif 
+#endif 
 
 /* Initial environment variables */
 #if defined(CONFIG_NAND_BOOT)
@@ -445,8 +489,13 @@
 #ifdef CONFIG_SBCSOM
 #define CONFIG_SYS_FSL_USDHC_NUM	3
 #else
+#ifdef CONFIG_TANARO
+#define CONFIG_SYS_FSL_USDHC_NUM	3
+#else
 #define CONFIG_SYS_FSL_USDHC_NUM	2
 #endif
+#endif
+
 #define CONFIG_SYS_FSL_ESDHC_ADDR       0
 
 #define CONFIG_SUPPORT_EMMC_BOOT	/* eMMC specific */
