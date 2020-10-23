@@ -27,6 +27,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 extern struct dram_timing_info dram_timing_v1r1;
 extern struct dram_timing_info dram_timing_v1r2_1GB_K4F8E304HB;
+extern struct dram_timing_info dram_timing_v1r2_1GB_K4F8E3S4HD;
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E304HB;
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E3S4HM;
 extern struct dram_timing_info dram_timing_v1r2_4GB_K4FBE3D4HM;
@@ -56,8 +57,15 @@ void spl_dram_init(void)
 		switch( ramsize)
 		{
             case KUK_RAMSIZE_1GB:
-				printf("Choose dram_timing_v1r2_1GB_K4F8E304HB\r\n");			
-				ddr_init(&dram_timing_v1r2_1GB_K4F8E304HB);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+				if ( module == GUF_MODULE_TANARO)
+                {
+                    printf("Choose dram_timing_v1r2_1GB_K4F8E3S4HD\r\n");			
+				    ddr_init(&dram_timing_v1r2_1GB_K4F8E3S4HD);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B                    
+                }else
+                {   // Need to check if K4F8E3S4HD from Tanaro may be used for Trizeps VIII Mini
+                    printf("Choose dram_timing_v1r2_1GB_K4F8E304HB\r\n");			
+				    ddr_init(&dram_timing_v1r2_1GB_K4F8E304HB);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+                }
                 break;
 			case KUK_RAMSIZE_2GB:
 				if ( ramskew == 0)
