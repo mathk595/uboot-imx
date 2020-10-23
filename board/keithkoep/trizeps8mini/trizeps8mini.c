@@ -257,7 +257,7 @@ static iomux_v3_cfg_t const fec1_nrst_pads[] = {
 #define FEC_MODE3   IMX_GPIO_NR(1,29)
 
 static iomux_v3_cfg_t const fec1_rst_pads[] = {
-        IMX8MM_PAD_GPIO1_IO09_GPIO1_IO9           | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
+    IMX8MM_PAD_GPIO1_IO09_GPIO1_IO9           | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
 	IMX8MM_PAD_ENET_RX_CTL_GPIO1_IO24         | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
 	IMX8MM_PAD_ENET_RD2_GPIO1_IO28            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
 	IMX8MM_PAD_ENET_RXC_GPIO1_IO25            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
@@ -310,6 +310,11 @@ static int setup_fec(void)
 {
 	struct iomuxc_gpr_base_regs *const iomuxc_gpr_regs
 		= (struct iomuxc_gpr_base_regs *) IOMUXC_GPR_BASE_ADDR;
+
+	//Enable SBCSOM ENET
+	gpio_request(IMX_GPIO_NR(1, 6), "ENET EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 6), 1);
+
 	/* Use 125M anatop REF_CLK1 for ENET1, not from external */
 	// printf("%s: Enable FEC CLK\n", __func__);
 	clrsetbits_le32(&iomuxc_gpr_regs->gpr[1],IOMUXC_GPR_GPR1_GPR_ENET1_TX_CLK_SEL_SHIFT, 0);
@@ -317,10 +322,6 @@ static int setup_fec(void)
 	setup_iomux_fec();
 	return 0;
 }
-
-#undef  MDIO_DEVAD_NONE
-#define MDIO_DEVAD_NONE 4
-
 int ethernet_1GB(void)
 {
   char *s;
@@ -345,7 +346,7 @@ void board_phy_dump(struct phy_device *phydev)
   printf("------------------%s-----------------------\n", __func__);
   
   for(i=0; i < 0x1F; i++ )
-    printf("Phy Adr: 0x%02x -> 0x%04x\n", i, phy_read(phydev, MDIO_DEVAD_NONE, i));
+    printf("Phy Adr: 0x%02x -> 0x%04x\n", i, phy_read(phydev, CONFIG_FEC_MXC_PHYADDR, i));
   
 }
 
@@ -356,28 +357,28 @@ void board_phy_dump(struct phy_device *phydev)
 
 void ar8031_write_debug_reg(struct phy_device *phydev, int reg, int value)
 {
-  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_DEBUG_ADDR_REG, reg);
-  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_DEBUG_DATA_REG, value);  
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, AR803x_PHY_DEBUG_ADDR_REG, reg);
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, AR803x_PHY_DEBUG_DATA_REG, value);  
 }
 
 int ar8031_write_mmd_reg(struct phy_device *phydev, int mmd, int reg, int value)
 {
   int regval;
-  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_ADDR_REG,         mmd);
-  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_OFFSET_REG,       reg);
-  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_ADDR_REG,(0x4000|mmd));
-  regval=phy_read(phydev, MDIO_DEVAD_NONE,      AR803x_PHY_MMD_OFFSET_REG);
-  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_OFFSET_REG,     value);  
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, AR803x_PHY_MMD_ADDR_REG,         mmd);
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, AR803x_PHY_MMD_OFFSET_REG,       reg);
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, AR803x_PHY_MMD_ADDR_REG,(0x4000|mmd));
+  regval=phy_read(phydev, CONFIG_FEC_MXC_PHYADDR,      AR803x_PHY_MMD_OFFSET_REG);
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, AR803x_PHY_MMD_OFFSET_REG,     value);  
   return(regval);  
 }
 
 int ar8031_read_mmd_reg(struct phy_device *phydev, int mmd, int reg)
 {
   int regval;
-  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_ADDR_REG,         mmd);
-  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_OFFSET_REG,       reg);
-  phy_write(phydev, MDIO_DEVAD_NONE, AR803x_PHY_MMD_ADDR_REG,(0x4000|mmd));
-  regval=phy_read(phydev, MDIO_DEVAD_NONE,      AR803x_PHY_MMD_OFFSET_REG);
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, AR803x_PHY_MMD_ADDR_REG,         mmd);
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, AR803x_PHY_MMD_OFFSET_REG,       reg);
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, AR803x_PHY_MMD_ADDR_REG,(0x4000|mmd));
+  regval=phy_read(phydev, CONFIG_FEC_MXC_PHYADDR,      AR803x_PHY_MMD_OFFSET_REG);
   return(regval&0xffff);  
 }
 
@@ -404,15 +405,15 @@ int board_phy_config(struct phy_device *phydev)
   /* enable rgmii rxc skew and phy mode select to RGMII copper */
 #if 0
   // Reset Phy....
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x0, 0x8000);
-  while( i-- && ((phy_read(phydev, MDIO_DEVAD_NONE, 0x00) & 0x8000)!=0))
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, 0x0, 0x8000);
+  while( i-- && ((phy_read(phydev, CONFIG_FEC_MXC_PHYADDR, 0x00) & 0x8000)!=0))
     udelay(1000);
 #endif
   if (phydev->drv->config)
     phydev->drv->config(phydev);
 
-  //  phy_write(phydev, MDIO_DEVAD_NONE, 0x00, 0x1140);
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x1F, 0xF500); // 0x8500); // 0xF400); // 0x8400
+  //  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, 0x00, 0x1140);
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, 0x1F, 0xF500); // 0x8500); // 0xF400); // 0x8400
 #if 0
   //  ar8031_write_debug_reg(phydev,  0x1f, 0x0008);  
   ar8031_write_debug_reg(phydev,  0x00, 0x82ee);
@@ -421,7 +422,7 @@ int board_phy_config(struct phy_device *phydev)
   i= ar8031_read_mmd_reg(phydev,MMD7,EEE_Advertisement);    
   if( ethernet_1GB() == 0 )
   {
-    phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x0);    // Do not use 1GBit
+    phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, 0x09, 0x0);    // Do not use 1GBit
     j  =  i & ~4;
     j &= ~2;    
     //printf("%s: Set Phy to 100MBit EEE=0x%04x->0x%04x\n", __func__, i, j);
@@ -429,7 +430,7 @@ int board_phy_config(struct phy_device *phydev)
   }else
   {
     //printf("%s: Set Phy to 1GBit\n", __func__);        
-    phy_write(phydev, MDIO_DEVAD_NONE, 0x09, 0x300);    // use 1GBit 
+    phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, 0x09, 0x300);    // use 1GBit 
   }
 
   i= ar8031_read_mmd_reg( phydev,MMD3,EEE_Control);
@@ -437,10 +438,10 @@ int board_phy_config(struct phy_device *phydev)
   //printf("%s: Disable EEE Control    0x%04x->0x%04x\n", __func__, i, j);  
   i= ar8031_write_mmd_reg(phydev,MMD3,EEE_Control, j);  
 
-  i  = phy_read(phydev, MDIO_DEVAD_NONE, 0x14);
+  i  = phy_read(phydev, CONFIG_FEC_MXC_PHYADDR, 0x14);
   j  = 0x2C;  
   //printf("%s: Smart Speed Register   0x%04x->0x%04x\n", __func__, i, j);  
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x14, j);
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, 0x14, j);
 
   i= ar8031_read_mmd_reg(phydev,MMD7,SGMII_Control_Register);
   j= ( i & 0xfff) | VDIFF_900mV;
@@ -448,8 +449,8 @@ int board_phy_config(struct phy_device *phydev)
   //printf("%s: SGMII_Control_Register 0x%04x->0x%04x\n", __func__, i, j);  
   ar8031_write_mmd_reg(phydev,MMD7,SGMII_Control_Register, j);// Write MMD7 8011 900mV    
 
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x00,  0x3100); // 100MBit Enable AutoNeg. DuplexMode
-  phy_write(phydev, MDIO_DEVAD_NONE, 0x00,  0x3300); // " restart AN
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, 0x00,  0x3100); // 100MBit Enable AutoNeg. DuplexMode
+  phy_write(phydev, CONFIG_FEC_MXC_PHYADDR, 0x00,  0x3300); // " restart AN
   // board_phy_dump(phydev); 
   return(0);  
 }
@@ -467,14 +468,13 @@ static void setup_pcie(void)
 
 	s = env_get("pcie");
 	if( s )
-	{	     
+	{	  
 		internal_wifi = (strncmp(s,"wifionboard", 2) == 0) ? 1:0;
 		pcie_ext      = (strncmp(s,"extern",      2) == 0) ? 1:0;
 		//printk("%s: Environment pcie=%s ", __func__, s);
 	}else
 	{	       
 		//printk("%s: Environment variable pcie not set. Skip Init PCIe gpios\n", __func__);
-		internal_wifi = 1;
 	}
 	if ( kuk_GetPeripheral( KUK_PERIPHERAL_WIRELESS) == KUK_WIRELESS_NONE)
  	{
@@ -729,6 +729,22 @@ static void lvds_init(struct display_info_t const *dev)
 		valb[29] = 0x03;
 		valb[33] = 0x30;
     }
+	else if(strncmp(dev->mode.name, "PCONXS", 6) == 0)
+	{
+		printf("%s: -> PCONXS\n", __func__);
+		valb[2]  = 0x03;	
+		valb[3] = 0x14;
+		valb[5] = 0x20;
+		valb[7] = 0x3D;	
+		valb[17] = 0x58;
+		valb[18] = 0x02;
+		valb[21] = 0x20;
+		valb[25] = 0x04;
+		valb[29] = 0x01;
+		valb[33] = 0xA0;
+		valb[37] = 0xA0;
+		valb[39] = 0x0C;
+    }
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
@@ -869,27 +885,35 @@ static int adv7535_init(struct display_info_t const *dev)
 	uint8_t val;
 	PADV753XREG padvseq = &advinit[0];
 
-	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
-	if (ret) {
-		printf("%s: No bus %d\n", __func__, i2c_bus);
+	for(i2c_bus = 1; i2c_bus <= 2; i2c_bus++)
+	{ 
+		ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+		if (ret) {
+			printf("%s: No bus %d\n", __func__, i2c_bus);
+			continue;
+		}
+
+		ret = dm_i2c_probe(bus, ADV7535_MAIN, 0, &main_dev);
+		if (ret) {
+			//printf("%s: Can't find device id=0x%x, on bus %d\n",
+			//	__func__, ADV7535_MAIN, i2c_bus);
+			continue;
+		}
+
+		ret = dm_i2c_probe(bus, ADV7535_DSI_CEC, 0, &cec_dev);
+		if (ret) {
+			printf("%s: Can't find device id=0x%x, on bus %d\n",
+				__func__, ADV7535_MAIN, i2c_bus);
+			continue;
+		}
+	}
+	if (ret)
+	{
+		printf("%s: Can't find ADV7535\n", __func__);
 		return 0;
 	}
 
-	ret = dm_i2c_probe(bus, ADV7535_MAIN, 0, &main_dev);
-	if (ret) {
-		//printf("%s: Can't find device id=0x%x, on bus %d\n",
-		//	__func__, ADV7535_MAIN, i2c_bus);
-		return 0;
-	}
-
-	ret = dm_i2c_probe(bus, ADV7535_DSI_CEC, 0, &cec_dev);
-	if (ret) {
-		//printf("%s: Can't find device id=0x%x, on bus %d\n",
-		//	__func__, ADV7535_MAIN, i2c_bus);
-		return 0;
-	}
-
-	printf("HDMI:  ADV7535 found\n");
+	printf("%s: ADV7535 found\n", __func__);
 	adv7535_i2c_reg_read(main_dev, 0x00, &val);
 	if ( val != 0x14) {
 		printf("Chip revision: 0x%x (expected: 0x14)\n", val);
@@ -1102,6 +1126,7 @@ void do_enable_mipi2hdmi(struct display_info_t const *dev)
 
 #define FOCALTECH_ID 0x38
 #define DATAIMAGE_ID 0x5C
+#define GOODIX_ID    0x5D //0x14
 
 static int detect_ipant7(struct display_info_t const *dev)
 {
@@ -1112,6 +1137,7 @@ static int detect_ipant7(struct display_info_t const *dev)
 	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
 	
+	mdelay(10);
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
@@ -1142,6 +1168,8 @@ static int detect_ipant10(struct display_info_t const *dev)
 	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
 
+	mdelay(10);
+
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
 		printf("%s: No bus %d\n", __func__, i2c_bus);
@@ -1158,6 +1186,47 @@ static int detect_ipant10(struct display_info_t const *dev)
 	kuk_panel_drv.lanes = 4;
 	kuk_panel_drv.name = "IPANT10";
 
+	return 1;
+}
+
+static int detect_pconxs(struct display_info_t const *dev)
+{
+	struct udevice *bus, *main_dev;
+	int i2c_bus = 1;
+	int ret;
+	
+	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+	gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
+
+	gpio_request(IMX_GPIO_NR(1, 5), "LVDS EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 5), 1);
+	
+	gpio_request(IMX_GPIO_NR(4, 14), "BL EN");
+	gpio_direction_output(IMX_GPIO_NR(4, 14), 1);
+
+	gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT PWM");
+	gpio_direction_output(IMX_GPIO_NR(1, 1), 1);
+	//gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
+
+	mdelay(10);
+	
+
+	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+	if (ret) {
+		printf("%s: No bus %d\n", __func__, i2c_bus);
+		return 0;
+	}
+	
+	ret = dm_i2c_probe(bus, GOODIX_ID, 0, &main_dev);
+	if (ret) {
+		printf("%s: Can't find device id=0x%x, on bus %d\n",
+			__func__, GOODIX_ID, i2c_bus);
+		return 0;
+	}
+	
+	kuk_panel_drv.lanes = 4;
+	kuk_panel_drv.name = "PCONXS";
+	
 	return 1;
 }
 
@@ -1179,6 +1248,26 @@ struct display_info_t const displays[] = {{
 		.refresh		= 60,
 		.xres			= 1024,
 		.yres			= 768,
+		.pixclock		= 16835, /* 59400000 // 65000000 */
+		.left_margin	= 156,
+		.right_margin	= 156,
+		.upper_margin	= 21,
+		.lower_margin	= 7,
+		.hsync_len		= 8,
+		.vsync_len		= 10,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_pconxs,
+	.enable	= do_enable_mipi2lvds,
+	.mode	= {
+		.name			= "PCONXS",
+		.refresh		= 60,
+		.xres			= 1024,
+		.yres			= 600,
 		.pixclock		= 16835, /* 59400000 // 65000000 */
 		.left_margin	= 156,
 		.right_margin	= 156,

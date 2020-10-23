@@ -449,6 +449,11 @@ int intpll_configure(enum pll_clocks pll, ulong freq)
 		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0xc8) |
 			INTPLL_PRE_DIV_VAL(2) | INTPLL_POST_DIV_VAL(1);
 		break;
+	case MHZ(1800):
+		/* 24 * 0xe1 / 3 / 2 ^ 0 */
+		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0xe1) |
+			INTPLL_PRE_DIV_VAL(3) | INTPLL_POST_DIV_VAL(0);
+		break;
 	case MHZ(2000):
 		/* 24 * 0xfa / 3 / 2 ^ 0 */
 		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0xfa) |
@@ -713,6 +718,7 @@ int clock_init()
 			     CLK_ROOT_SOURCE_SEL(2));
 
 	intpll_configure(ANATOP_ARM_PLL, MHZ(1200));
+	//intpll_configure(ANATOP_ARM_PLL, MHZ(1800));
 
 #if 0
 	//Changed to 18.09 version -> old linux kernel not bootable
