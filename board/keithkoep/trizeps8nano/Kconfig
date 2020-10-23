@@ -1,0 +1,14 @@
+if TARGET_TRIZEPS8NANO
+
+config SYS_BOARD
+	default "trizeps8nano"
+
+config SYS_VENDOR
+	default "keithkoep"
+
+config SYS_CONFIG_NAME
+	default "trizeps8nano"
+
+source "board/keithkoep/common/Kconfig"
+
+endif
