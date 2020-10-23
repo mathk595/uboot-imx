@@ -642,7 +642,9 @@ dtb-$(CONFIG_ARCH_IMX8M) += fsl-imx8mq-evk.dtb \
 		fsl-imx8mq-aiy.dtb \
 		fsl-imx8mp-evk.dtb \
 		kuk-trizeps8.dtb \
-		kuk-trizeps8mini.dtb
+		kuk-trizeps8mini.dtb \
+		kuk-trizeps8nano.dtb \
+
 
 dtb-$(CONFIG_RCAR_GEN2) += \
 	r8a7790-lager-u-boot.dtb \

@@ -100,6 +100,12 @@ config TARGET_IMX8MN_EVK
 	select SUPPORT_SPL
 	select IMX8M_LPDDR4
 
+config TARGET_TRIZEPS8NANO
+	bool "trizeps8nano"
+	select IMX8MN
+	select SUPPORT_SPL
+	select IMX8M_LPDDR4
+
 config TARGET_IMX8MN_DDR4_EVK
 	bool "imx8mn DDR4 EVK board"
 	select IMX8MN
@@ -123,5 +129,6 @@ source "board/freescale/imx8mn_evk/Kconfig"
 source "board/freescale/imx8mp_evk/Kconfig"
 source "board/keithkoep/trizeps8/Kconfig"
 source "board/keithkoep/trizeps8mini/Kconfig"
+source "board/keithkoep/trizeps8nano/Kconfig"
 
 endif
