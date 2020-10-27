@@ -158,7 +158,7 @@ static void init_gpio4_17(int level)
 
 static void init_camera_ov5640(void)
 {
-        printf("Init Camera Pins SODIMM 123,125 as GPIO \n");  
+    printf("Init Camera Pins SODIMM 123,125 as GPIO \n");  
 	imx_iomux_v3_setup_multiple_pads(camera_pads, ARRAY_SIZE(camera_pads));
 	gpio_request(CAMERA_PWDN, "camera_pwdn");
 	gpio_direction_output(CAMERA_PWDN, 1);
@@ -264,22 +264,6 @@ static iomux_v3_cfg_t const fec1_rst_pads[] = {
 	IMX8MM_PAD_ENET_RD3_GPIO1_IO29            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
 	IMX8MM_PAD_ENET_RD0_GPIO1_IO26            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
 	IMX8MM_PAD_ENET_RD1_GPIO1_IO27            | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
-	/*
-	IMX8MM_PAD_ENET_MDC_ENET1_MDC	          | MUX_PAD_CTRL(	0x03),
-	IMX8MM_PAD_ENET_MDIO_ENET1_MDIO           | MUX_PAD_CTRL(	0x03),
-	IMX8MM_PAD_ENET_TD3_ENET1_RGMII_TD3       | MUX_PAD_CTRL(	0x1f),
-	IMX8MM_PAD_ENET_TD2_ENET1_RGMII_TD2       | MUX_PAD_CTRL(	0x1f),
-	IMX8MM_PAD_ENET_TD1_ENET1_RGMII_TD1       | MUX_PAD_CTRL(	0x1f),
-	IMX8MM_PAD_ENET_TD0_ENET1_RGMII_TD0       | MUX_PAD_CTRL(	0x1f),
-	IMX8MM_PAD_ENET_RD3_ENET1_RGMII_RD3       | MUX_PAD_CTRL(	0x91),
-	IMX8MM_PAD_ENET_RD2_ENET1_RGMII_RD2       | MUX_PAD_CTRL(	0x91),
-	IMX8MM_PAD_ENET_RD1_ENET1_RGMII_RD1       | MUX_PAD_CTRL(	0x91),
-	IMX8MM_PAD_ENET_RD0_ENET1_RGMII_RD0       | MUX_PAD_CTRL(	0x91),
-	IMX8MM_PAD_ENET_TXC_ENET1_RGMII_TXC       | MUX_PAD_CTRL(	0x1f),
-	IMX8MM_PAD_ENET_RXC_ENET1_RGMII_RXC       | MUX_PAD_CTRL(	0x91),
-	IMX8MM_PAD_ENET_RX_CTL_ENET1_RGMII_RX_CTL | MUX_PAD_CTRL(	0x91),
-	IMX8MM_PAD_ENET_TX_CTL_ENET1_RGMII_TX_CTL | MUX_PAD_CTRL(	0x1f),
-	*/
 };
 
 static void setup_iomux_fec(void)
@@ -308,12 +292,18 @@ static void setup_iomux_fec(void)
 
 static int setup_fec(void)
 {
+	int module;
+
 	struct iomuxc_gpr_base_regs *const iomuxc_gpr_regs
 		= (struct iomuxc_gpr_base_regs *) IOMUXC_GPR_BASE_ADDR;
 
-	//Enable SBCSOM ENET
-	gpio_request(IMX_GPIO_NR(1, 6), "ENET EN");
-	gpio_direction_output(IMX_GPIO_NR(1, 6), 1);
+    module = kuk_GetModule();
+	if(module == KUK_MODULE_SBCSOM8MINI)
+	{
+		//Enable SBCSOM ENET
+		gpio_request(IMX_GPIO_NR(1, 6), "ENET EN");
+		gpio_direction_output(IMX_GPIO_NR(1, 6), 1);
+	}
 
 	/* Use 125M anatop REF_CLK1 for ENET1, not from external */
 	// printf("%s: Enable FEC CLK\n", __func__);
@@ -396,7 +386,7 @@ int ar8031_read_mmd_reg(struct phy_device *phydev, int mmd, int reg)
 int board_phy_config(struct phy_device *phydev)
 {
   int j,i=100;
-  
+
   if ( kuk_GetPeripheral( KUK_PERIPHERAL_ETHERNET) == KUK_ETHERNET_NONE)
   {
 	printf("none (disabled)\n");
@@ -474,7 +464,7 @@ static void setup_pcie(void)
 		//printk("%s: Environment pcie=%s ", __func__, s);
 	}else
 	{	       
-		//printk("%s: Environment variable pcie not set. Skip Init PCIe gpios\n", __func__);
+		printk("%s: Environment variable pcie not set. Skip Init PCIe gpios\n", __func__);
 	}
 	if ( kuk_GetPeripheral( KUK_PERIPHERAL_WIRELESS) == KUK_WIRELESS_NONE)
  	{
@@ -587,8 +577,8 @@ int board_init(void)
 		setup_fec();
 	}
 #endif
-	init_camera_ov5640();	
-	setup_pcie(); /* environment not read here */
+	//init_camera_ov5640();	
+	//setup_pcie(); /* environment not read here */
 
 #ifdef CONFIG_SYS_I2C_MXC
 	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);	
@@ -731,7 +721,7 @@ static void lvds_init(struct display_info_t const *dev)
     }
 	else if(strncmp(dev->mode.name, "PCONXS", 6) == 0)
 	{
-		printf("%s: -> PCONXS\n", __func__);
+		//printf("%s: -> PCONXS\n", __func__);
 		valb[2]  = 0x03;	
 		valb[3] = 0x14;
 		valb[5] = 0x20;
@@ -889,7 +879,7 @@ static int adv7535_init(struct display_info_t const *dev)
 	{ 
 		ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 		if (ret) {
-			printf("%s: No bus %d\n", __func__, i2c_bus);
+			//printf("%s: No bus %d\n", __func__, i2c_bus);
 			continue;
 		}
 
@@ -902,18 +892,23 @@ static int adv7535_init(struct display_info_t const *dev)
 
 		ret = dm_i2c_probe(bus, ADV7535_DSI_CEC, 0, &cec_dev);
 		if (ret) {
-			printf("%s: Can't find device id=0x%x, on bus %d\n",
-				__func__, ADV7535_MAIN, i2c_bus);
+			//printf("%s: Can't find device id=0x%x, on bus %d\n",
+			//	__func__, ADV7535_MAIN, i2c_bus);
 			continue;
+		}
+
+		if(!ret)
+		{
+			break;
 		}
 	}
 	if (ret)
 	{
-		printf("%s: Can't find ADV7535\n", __func__);
+		//printf("%s: Can't find ADV7535\n", __func__);
 		return 0;
 	}
 
-	printf("%s: ADV7535 found\n", __func__);
+	//printf("%s: ADV7535 found\n", __func__);
 	adv7535_i2c_reg_read(main_dev, 0x00, &val);
 	if ( val != 0x14) {
 		printf("Chip revision: 0x%x (expected: 0x14)\n", val);
@@ -1009,22 +1004,14 @@ struct mipi_dsi_client_dev adv7535_dev = {
 void do_enable_mipi2rgb(struct display_info_t const *dev)
 {	
 	printf("%s: Enable %s \n", __func__, dev->mode.name);
-	
-	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
-	gpio_direction_output(IMX_GPIO_NR(1, 8), 0);
-	mdelay(100);
-	gpio_direction_output(IMX_GPIO_NR(1, 8), 1);
-	
-	gpio_request(IMX_GPIO_NR(1, 7), "DISPLAY EN");
-	gpio_direction_output(IMX_GPIO_NR(1, 7), 1);
-	
-	gpio_request(IMX_GPIO_NR(1, 5), "LVDS EN");
+
+	gpio_request(IMX_GPIO_NR(1, 5), "DISPLAY_EN");
 	gpio_direction_output(IMX_GPIO_NR(1, 5), 1);
 	
-	gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT PWM");
+	gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT_PWM");
 	gpio_direction_output(IMX_GPIO_NR(1, 1), 1);
 	
-	gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT EN");
+	gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT_EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 22), 1);
 
 	fpga_init(0x8D);
@@ -1067,16 +1054,8 @@ void do_display_default(struct display_info_t const *dev)
 void do_enable_mipi2lvds(struct display_info_t const *dev)
 {
 	printf("%s: Enable %s \n", __func__, dev->mode.name);
-	
-	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
-	gpio_direction_output(IMX_GPIO_NR(1, 8), 0);
-	mdelay(100);
-	gpio_direction_output(IMX_GPIO_NR(1, 8), 1);
-	
-	gpio_request(IMX_GPIO_NR(1, 7), "DISPLAY EN");
-	gpio_direction_output(IMX_GPIO_NR(1, 7), 1);
-	
-	gpio_request(IMX_GPIO_NR(1, 5), "DSI EN1");
+		
+	gpio_request(IMX_GPIO_NR(1, 5), "DISPLAY_EN");
 	gpio_direction_output(IMX_GPIO_NR(1, 5), 1);
 	
 	gpio_request(IMX_GPIO_NR(1, 4), "LVDS EN");
@@ -1133,6 +1112,8 @@ static int detect_ipant7(struct display_info_t const *dev)
 	struct udevice *bus, *main_dev;
 	int i2c_bus = 1;
 	int ret;
+
+	//printf("%s:  %s \n", __func__, dev->mode.name);
 	
 	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
@@ -1141,14 +1122,14 @@ static int detect_ipant7(struct display_info_t const *dev)
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
-		printf("%s: No bus %d\n", __func__, i2c_bus);
+		//printf("%s: No bus %d\n", __func__, i2c_bus);
 		return 0;
 	}
 	
 	ret = dm_i2c_probe(bus, FOCALTECH_ID, 0, &main_dev);
 	if (ret) {
-		printf("%s: Can't find device id=0x%x, on bus %d\n",
-			__func__, FOCALTECH_ID, i2c_bus);
+		//printf("%s: Can't find device id=0x%x, on bus %d\n",
+		//	__func__, FOCALTECH_ID, i2c_bus);
 		return 0;
 	}
 	
@@ -1165,6 +1146,8 @@ static int detect_ipant10(struct display_info_t const *dev)
 	int i2c_bus = 1;
 	int ret;
 
+	//printf("%s:  %s \n", __func__, dev->mode.name);
+
 	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
 
@@ -1172,14 +1155,14 @@ static int detect_ipant10(struct display_info_t const *dev)
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
-		printf("%s: No bus %d\n", __func__, i2c_bus);
+		//printf("%s: No bus %d\n", __func__, i2c_bus);
 		return 0;
 	}
 	
 	ret = dm_i2c_probe(bus, DATAIMAGE_ID, 0, &main_dev);
 	if (ret) {
-		printf("%s: Can't find device id=0x%x, on bus %d\n",
-			__func__, DATAIMAGE_ID, i2c_bus);
+		//printf("%s: Can't find device id=0x%x, on bus %d\n",
+		//	__func__, DATAIMAGE_ID, i2c_bus);
 		return 0;
 	}
 		
@@ -1195,16 +1178,16 @@ static int detect_pconxs(struct display_info_t const *dev)
 	int i2c_bus = 1;
 	int ret;
 	
-	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH_EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
 
-	gpio_request(IMX_GPIO_NR(1, 5), "LVDS EN");
+	gpio_request(IMX_GPIO_NR(1, 5), "DISPLAY_EN");
 	gpio_direction_output(IMX_GPIO_NR(1, 5), 1);
 	
-	gpio_request(IMX_GPIO_NR(4, 14), "BL EN");
+	gpio_request(IMX_GPIO_NR(4, 14), "BL_EN");
 	gpio_direction_output(IMX_GPIO_NR(4, 14), 1);
 
-	gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT PWM");
+	gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT_PWM");
 	gpio_direction_output(IMX_GPIO_NR(1, 1), 1);
 	//gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
 
@@ -1213,14 +1196,14 @@ static int detect_pconxs(struct display_info_t const *dev)
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
-		printf("%s: No bus %d\n", __func__, i2c_bus);
+		//printf("%s: No bus %d\n", __func__, i2c_bus);
 		return 0;
 	}
 	
 	ret = dm_i2c_probe(bus, GOODIX_ID, 0, &main_dev);
 	if (ret) {
-		printf("%s: Can't find device id=0x%x, on bus %d\n",
-			__func__, GOODIX_ID, i2c_bus);
+		//printf("%s: Can't find device id=0x%x, on bus %d\n",
+		//	__func__, GOODIX_ID, i2c_bus);
 		return 0;
 	}
 	
@@ -1230,18 +1213,90 @@ static int detect_pconxs(struct display_info_t const *dev)
 	return 1;
 }
 
-
+/*
 void board_quiesce_devices(void)
 {
 	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
 	gpio_direction_output(IMX_GPIO_NR(1, 8), 0);
+}
+*/
+
+static int detect_display(struct display_info_t const *dev)
+{
+	struct udevice *bus;
+	int ret;
+	int i2c_bus = 1;
+	char *s;
+
+	s = env_get("display");
+	if( s )
+	{
+		//printk("%s: Environment display=%s \n", __func__, s);
+		if(!(strncmp(s, dev->mode.name, sizeof(s))))
+		{
+			//printf("%s: Choose %s \n", __func__, dev->mode.name);
+
+			ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+			if (ret) {
+				//printf("%s: No bus %d\n", __func__, i2c_bus);
+				return 0;
+			}
+
+			if(!(strncmp(s, "IPANT10", sizeof(s))))
+			{
+				gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+				gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
+
+				kuk_panel_drv.lanes = 4;
+				kuk_panel_drv.name = "IPANT10";
+			}
+			else if(!(strncmp(s, "IPANT7", sizeof(s))))
+			{
+				gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+				gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
+
+				kuk_panel_drv.lanes = 2;
+				kuk_panel_drv.name = "IPANT7";
+			}
+			else if(!(strncmp(s, "PCONXS", sizeof(s))))
+			{
+				gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+				gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
+
+				kuk_panel_drv.lanes = 4;
+				kuk_panel_drv.name = "PCONXS";
+			}
+
+			return 1;
+		}
+		if(strncmp(s, "auto", sizeof(s)))
+		{
+			return 0;
+		}
+	}
+	//printk("%s: Try autodetect... %s \n", __func__, dev->mode.name);
+
+	if(!(strncmp(dev->mode.name, "IPANT7", sizeof(dev->mode.name))))
+	{
+		return detect_ipant7(dev);
+	}
+	else if(!(strncmp(dev->mode.name, "IPANT10", sizeof(dev->mode.name))))
+	{
+		return detect_ipant10(dev);
+	}
+	else if(!(strncmp(dev->mode.name, "PCONXS", sizeof(dev->mode.name))))
+	{
+		return detect_pconxs(dev);
+	}
+
+	return 0;
 }
 
 struct display_info_t const displays[] = {{
 	.bus = LCDIF_BASE_ADDR,
 	.addr = 0,
 	.pixfmt = 24,
-	.detect = NULL,
+	.detect = detect_display,
 	.enable	= do_display_default,
 	.mode	= {
 		.name			= "MIPI2KUK",
@@ -1261,7 +1316,7 @@ struct display_info_t const displays[] = {{
 	.bus = LCDIF_BASE_ADDR,
 	.addr = 0,
 	.pixfmt = 24,
-	.detect = detect_pconxs,
+	.detect = detect_display,
 	.enable	= do_enable_mipi2lvds,
 	.mode	= {
 		.name			= "PCONXS",
@@ -1281,27 +1336,7 @@ struct display_info_t const displays[] = {{
 	.bus = LCDIF_BASE_ADDR,
 	.addr = 0,
 	.pixfmt = 24,
-	.detect = adv7535_init,
-	.enable	= do_enable_mipi2hdmi,
-	.mode	= {
-		.name			= "MIPI2HDMI",
-		.refresh		= 60,
-		.xres			= 1920,
-		.yres			= 1080,
-		.pixclock		= 6734, /* 148500000 */
-		.left_margin	= 148,
-		.right_margin	= 88,
-		.upper_margin	= 36,
-		.lower_margin	= 4,
-		.hsync_len		= 44,
-		.vsync_len		= 5,
-		.sync			= FB_SYNC_EXT,
-		.vmode			= FB_VMODE_NONINTERLACED
-} }, {
-	.bus = LCDIF_BASE_ADDR,
-	.addr = 0,
-	.pixfmt = 24,
-	.detect = detect_ipant7,
+	.detect = detect_display,
 	.enable	= do_enable_mipi2rgb,
 	.mode	= {
 		.name			= "IPANT7",
@@ -1321,7 +1356,7 @@ struct display_info_t const displays[] = {{
 	.bus = LCDIF_BASE_ADDR,
 	.addr = 0,
 	.pixfmt = 24,
-	.detect = detect_ipant10,
+	.detect = detect_display,
 	.enable	= do_enable_mipi2lvds,
 	.mode	= {
 		.name			= "IPANT10",
@@ -1338,10 +1373,11 @@ struct display_info_t const displays[] = {{
 		.sync			= FB_SYNC_EXT,
 		.vmode			= FB_VMODE_NONINTERLACED
 } }, {
+	
 	.bus = LCDIF_BASE_ADDR,
 	.addr = 0,
 	.pixfmt = 24,
-	.detect = adv7535_init,
+	.detect = detect_display,
 	.enable	= do_enable_mipi2hdmi,
 	.mode	= {
 		.name			= "MIPI2HDMI",

@@ -118,11 +118,7 @@
 
 #define CONFIG_FEC_MXC
 #define CONFIG_FEC_XCV_TYPE             RGMII
-#ifdef CONFIG_SBCSOM
-#define CONFIG_FEC_MXC_PHYADDR          0
-#else
 #define CONFIG_FEC_MXC_PHYADDR          4
-#endif
 #define FEC_QUIRK_ENET_MAC
 
 #define CONFIG_PHY_GIGE
@@ -308,6 +304,7 @@
 	CONFIG_MFG_ENV_SETTINGS \
 	JAILHOUSE_ENV \
 	KUK_FUSE_PRODUCTION \
+	"display=auto\0"                              \
 	"pcie=none\0"                              \
         "append_bootargs=androidboot.selinux=permissive\0"\
 	"script=boot.scr\0" \
