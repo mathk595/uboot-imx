@@ -708,7 +708,7 @@ static void lvds_init(struct display_info_t const *dev)
 	uint8_t valb[] = { 0x01, 0x00, 0x05, 0x10, 0x00, 0x26, 0x00, 0x27, 0x00, 0x78, 0x00, 0x03, 0x00, 0x00, 0x04, 0x00, 0x00,
 					   0x00, 0x03, 0x00, 0x00, 0x21, 0x00 ,0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00,
 					   0x9c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xFF};
-					   
+
 	if(strncmp(dev->mode.name, "IPANT10", 7) == 0)
 	{
 		//DataImage
@@ -722,6 +722,22 @@ static void lvds_init(struct display_info_t const *dev)
 	else if(strncmp(dev->mode.name, "PCONXS", 6) == 0)
 	{
 		//printf("%s: -> PCONXS\n", __func__);
+		valb[2]  = 0x03;	
+		valb[3] = 0x14;
+		valb[5] = 0x20;
+		valb[7] = 0x3D;	
+		valb[17] = 0x58;
+		valb[18] = 0x02;
+		valb[21] = 0x20;
+		valb[25] = 0x04;
+		valb[29] = 0x01;
+		valb[33] = 0xA0;
+		valb[37] = 0xA0;
+		valb[39] = 0x0C;
+    }
+	else if(strncmp(dev->mode.name, "IPANM7", 6) == 0)
+	{
+		//printf("%s: -> IPANM7\n", __func__);
 		valb[2]  = 0x03;	
 		valb[3] = 0x14;
 		valb[5] = 0x20;
@@ -1035,6 +1051,8 @@ void do_display_default(struct display_info_t const *dev)
     int module;
     module = kuk_GetModule();
 
+	printf("%s: Enable %s \n", __func__, dev->mode.name);
+
     switch( module) {
         case KUK_MODULE_SBCSOM8MINI:
         case KUK_MODULE_SBCSOM8NANO:
@@ -1046,9 +1064,32 @@ void do_display_default(struct display_info_t const *dev)
 	        gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
 	        gpio_direction_output(IMX_GPIO_NR(1, 5), 0);
             break;
+		case KUK_MODULE_MYON2:
+			gpio_request(IMX_GPIO_NR(1, 5), "DISPLAY_EN");
+			gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT_PWM");
+			gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT_EN");
+			gpio_request(IMX_GPIO_NR(1, 4), "LVDS EN");
+
+			gpio_direction_output(IMX_GPIO_NR(1, 4), 0);
+			gpio_direction_output(IMX_GPIO_NR(1, 5), 0);
+			gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
+			gpio_direction_output(IMX_GPIO_NR(3, 22), 0);
+			break;
+		case KUK_MODULE_TRIZEPS8MINI:
+			gpio_request(IMX_GPIO_NR(1, 5), "DISPLAY_EN");
+			gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT_PWM");
+			gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT_EN");
+			gpio_request(IMX_GPIO_NR(1, 4), "LVDS EN");
+
+			gpio_direction_output(IMX_GPIO_NR(1, 4), 0);
+			gpio_direction_output(IMX_GPIO_NR(1, 5), 0);
+			gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
+			gpio_direction_output(IMX_GPIO_NR(3, 22), 0);
+			break;
         default:
             break;
     }
+	
 }
 
 void do_enable_mipi2lvds(struct display_info_t const *dev)
@@ -1139,6 +1180,38 @@ static int detect_ipant7(struct display_info_t const *dev)
 	return 1;
 }
 
+static int detect_ipanm7(struct display_info_t const *dev)
+{
+	struct udevice *bus, *main_dev;
+	int i2c_bus = 1;
+	int ret;
+
+	//printf("%s:  %s \n", __func__, dev->mode.name);
+	
+	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+	gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
+	
+	mdelay(10);
+
+	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+	if (ret) {
+		//printf("%s: No bus %d\n", __func__, i2c_bus);
+		return 0;
+	}
+	
+	ret = dm_i2c_probe(bus, FOCALTECH_ID, 0, &main_dev);
+	if (ret) {
+		//printf("%s: Can't find device id=0x%x, on bus %d\n",
+		//	__func__, FOCALTECH_ID, i2c_bus);
+		return 0;
+	}
+	
+	kuk_panel_drv.lanes = 4;
+	kuk_panel_drv.name = "IPANM7";
+	
+	return 1;
+}
+
 static int detect_ipant10(struct display_info_t const *dev)
 {
 	
@@ -1213,20 +1286,13 @@ static int detect_pconxs(struct display_info_t const *dev)
 	return 1;
 }
 
-/*
-void board_quiesce_devices(void)
-{
-	gpio_request(IMX_GPIO_NR(1, 8), "DSI EN");
-	gpio_direction_output(IMX_GPIO_NR(1, 8), 0);
-}
-*/
-
 static int detect_display(struct display_info_t const *dev)
 {
 	struct udevice *bus;
 	int ret;
 	int i2c_bus = 1;
 	char *s;
+	int module;
 
 	s = env_get("display");
 	if( s )
@@ -1266,6 +1332,15 @@ static int detect_display(struct display_info_t const *dev)
 				kuk_panel_drv.lanes = 4;
 				kuk_panel_drv.name = "PCONXS";
 			}
+			else if(!(strncmp(s, "IPANM7", sizeof(s))))
+			{
+				gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+				gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
+
+				kuk_panel_drv.lanes = 4;
+				kuk_panel_drv.name = "IPANM7";
+			}
+
 
 			return 1;
 		}
@@ -1275,10 +1350,15 @@ static int detect_display(struct display_info_t const *dev)
 		}
 	}
 	//printk("%s: Try autodetect... %s \n", __func__, dev->mode.name);
+	module = kuk_GetModule();
 
-	if(!(strncmp(dev->mode.name, "IPANT7", sizeof(dev->mode.name))))
+	if((!(strncmp(dev->mode.name, "IPANT7", sizeof(dev->mode.name)))) & (module == KUK_MODULE_TRIZEPS8MINI))
 	{
 		return detect_ipant7(dev);
+	}
+	else if((!(strncmp(dev->mode.name, "IPANM7", sizeof(dev->mode.name)))) & (module == KUK_MODULE_MYON2))
+	{
+		return detect_ipanm7(dev);
 	}
 	else if(!(strncmp(dev->mode.name, "IPANT10", sizeof(dev->mode.name))))
 	{
@@ -1287,6 +1367,10 @@ static int detect_display(struct display_info_t const *dev)
 	else if(!(strncmp(dev->mode.name, "PCONXS", sizeof(dev->mode.name))))
 	{
 		return detect_pconxs(dev);
+	}
+	else if(!(strncmp(dev->mode.name, "MIPI2HDMI", sizeof(dev->mode.name))))
+	{
+		return adv7535_init(dev);
 	}
 
 	return 0;
@@ -1337,6 +1421,46 @@ struct display_info_t const displays[] = {{
 	.addr = 0,
 	.pixfmt = 24,
 	.detect = detect_display,
+	.enable	= do_enable_mipi2lvds,
+	.mode	= {
+		.name			= "IPANT10",
+		.refresh		= 60,
+		.xres			= 1280,
+		.yres			= 800,
+		.pixclock		= 24390, /* 41000000 */
+		.left_margin	= 48,
+		.right_margin	= 52,
+		.upper_margin	= 10,
+		.lower_margin	= 10,
+		.hsync_len		= 60,
+		.vsync_len		= 3,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {	
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_display,
+	.enable	= do_enable_mipi2hdmi,
+	.mode	= {
+		.name			= "MIPI2HDMI",
+		.refresh		= 60,
+		.xres			= 1920,
+		.yres			= 1080,
+		.pixclock		= 6734, /* 148500000 */
+		.left_margin	= 148,
+		.right_margin	= 88,
+		.upper_margin	= 36,
+		.lower_margin	= 4,
+		.hsync_len		= 44,
+		.vsync_len		= 5,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_display,
 	.enable	= do_enable_mipi2rgb,
 	.mode	= {
 		.name			= "IPANT7",
@@ -1359,40 +1483,24 @@ struct display_info_t const displays[] = {{
 	.detect = detect_display,
 	.enable	= do_enable_mipi2lvds,
 	.mode	= {
-		.name			= "IPANT10",
+		.name			= "IPANM7",
 		.refresh		= 60,
-		.xres			= 1280,
-		.yres			= 800,
-		.pixclock		= 24390, /* 41000000 */
-		.left_margin	= 48,
-		.right_margin	= 52,
-		.upper_margin	= 10,
-		.lower_margin	= 10,
-		.hsync_len		= 60,
-		.vsync_len		= 3,
+		.xres			= 800,
+		.yres			= 480,
+		.pixclock		= 16835, /* 59400000 // 65000000 */
+		.left_margin	= 156,
+		.right_margin	= 156,
+		.upper_margin	= 21,
+		.lower_margin	= 7,
+		.hsync_len		= 8,
+		.vsync_len		= 10,
 		.sync			= FB_SYNC_EXT,
 		.vmode			= FB_VMODE_NONINTERLACED
 } }, {
-	
-	.bus = LCDIF_BASE_ADDR,
-	.addr = 0,
-	.pixfmt = 24,
 	.detect = detect_display,
-	.enable	= do_enable_mipi2hdmi,
+	.enable	= do_display_default,
 	.mode	= {
-		.name			= "MIPI2HDMI",
-		.refresh		= 60,
-		.xres			= 1920,
-		.yres			= 1080,
-		.pixclock		= 6734, /* 148500000 */
-		.left_margin	= 148,
-		.right_margin	= 88,
-		.upper_margin	= 36,
-		.lower_margin	= 4,
-		.hsync_len		= 44,
-		.vsync_len		= 5,
-		.sync			= FB_SYNC_EXT,
-		.vmode			= FB_VMODE_NONINTERLACED
+		.name			= "none",
 } }
 };
 size_t display_count = ARRAY_SIZE(displays);
