@@ -5,6 +5,7 @@
 #
 
 obj-y += trizeps8mini.o
+obj-$(CONFIG_VIDEO_MXS) += display.o
 
 ifdef CONFIG_SPL_BUILD
 obj-y += spl.o
