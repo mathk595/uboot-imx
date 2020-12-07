@@ -357,9 +357,12 @@ int board_fit_config_name_match(const char *name)
 }
 #endif
 
+extern int intpll_configure(enum pll_clocks pll, ulong freq);
+
 void board_init_f(ulong dummy)
 {
 	int ret;
+	u32 max_freq;
 
 	/* Clear the BSS. */
 	memset(__bss_start, 0, __bss_end - __bss_start);
@@ -387,6 +390,21 @@ void board_init_f(ulong dummy)
 
 	/* DDR initialization */
 	spl_dram_init();
+
+
+	max_freq = get_cpu_speed_grade_hz();
+	if(max_freq)
+	{
+		//update cpu clock
+		clock_set_target_val(ARM_A53_CLK_ROOT, CLK_ROOT_ON | \
+					CLK_ROOT_SOURCE_SEL(2));
+
+		intpll_configure(ANATOP_ARM_PLL, max_freq);
+
+		clock_set_target_val(ARM_A53_CLK_ROOT, CLK_ROOT_ON | \
+					CLK_ROOT_SOURCE_SEL(1) | \
+					CLK_ROOT_POST_DIV(CLK_ROOT_POST_DIV1));
+	}
 
 	board_init_r(NULL, 0);
 }

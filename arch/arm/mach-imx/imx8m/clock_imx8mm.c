@@ -449,6 +449,11 @@ int intpll_configure(enum pll_clocks pll, ulong freq)
 		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0xc8) |
 			INTPLL_PRE_DIV_VAL(2) | INTPLL_POST_DIV_VAL(1);
 		break;
+	case MHZ(1600):
+		/* 24 * 0xc8 / 3 / 2 ^ 0 */
+		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0xc8) |
+			INTPLL_PRE_DIV_VAL(3) | INTPLL_POST_DIV_VAL(0);
+		break;
 	case MHZ(1800):
 		/* 24 * 0xe1 / 3 / 2 ^ 0 */
 		pll_div_ctl_val = INTPLL_MAIN_DIV_VAL(0xe1) |
