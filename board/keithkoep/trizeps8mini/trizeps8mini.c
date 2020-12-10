@@ -114,20 +114,18 @@ static iomux_v3_cfg_t const usb_pads[] = {
 	IMX8MM_PAD_GPIO1_IO12_GPIO1_IO12 | MUX_PAD_CTRL(GPIO_PAD_CTRL),	
 };
 
-#define CAMERA_PWDN IMX_GPIO_NR(1,3)
-#define CAMERA_nRST IMX_GPIO_NR(1,6)
-
-static iomux_v3_cfg_t const camera_pads[] = {
-        IMX8MM_PAD_GPIO1_IO03_GPIO1_IO3  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam Pwdn
-	IMX8MM_PAD_GPIO1_IO06_GPIO1_IO6  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam nRST
-};
-
 
 #if TRIZEPS8_USE_RESET_OUT_AS_WATCHDOG_OUT
 static iomux_v3_cfg_t const wdog_pads[] = {
 	IMX8MM_PAD_GPIO1_IO02_WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
 };
 #endif
+
+static iomux_v3_cfg_t const reset_out_pads_v1r1[] = { IMX8MM_PAD_GPIO1_IO02_GPIO1_IO2 | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),};
+static iomux_v3_cfg_t const reset_out_pads_v1r2[] = { IMX8MM_PAD_NAND_DQS_GPIO3_IO14  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),};
+
+#define GPIO_RESET_OUT_V1R1         IMX_GPIO_NR(1, 2)
+#define GPIO_RESET_OUT_V1R2         IMX_GPIO_NR(3,14)
 
 #define GPIO4_DATA *(unsigned int *)0x30230000
 #define GPIO4_DIR  *(unsigned int *)0x30230004
@@ -152,6 +150,16 @@ static void init_gpio4_17(int level)
 }
 #endif
 
+/* currently unused
+
+#define CAMERA_PWDN IMX_GPIO_NR(1,3)
+#define CAMERA_nRST IMX_GPIO_NR(1,6)
+
+static iomux_v3_cfg_t const camera_pads[] = {
+        IMX8MM_PAD_GPIO1_IO03_GPIO1_IO3  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam Pwdn
+	IMX8MM_PAD_GPIO1_IO06_GPIO1_IO6  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam nRST
+};
+
 static void init_camera_ov5640(void)
 {
     printf("Init Camera Pins SODIMM 123,125 as GPIO \n");  
@@ -169,7 +177,7 @@ static void init_camera_ov5640(void)
 	gpio_direction_output(CAMERA_nRST, 1);
 	
 }
-
+*/
 
 int board_early_init_f(void)
 {
@@ -556,7 +564,31 @@ void pci_init_board(void)
   /* test the 1 lane mode of the PCIe A controller */
   printf("%s:***************************************************\n", __func__);
 }
-  
+static int resout=0;
+
+void reset_out(int val)
+{
+  if( kuk_GetPCBrevision() > KUK_PCBREV_V1R1 )
+  {      
+    if( resout == 0 )
+    {
+      imx_iomux_v3_setup_multiple_pads( reset_out_pads_v1r2, 1);      
+      gpio_request(GPIO_RESET_OUT_V1R2, "RESET_OUT");
+      resout=1;        
+    }  
+    gpio_direction_output(GPIO_RESET_OUT_V1R2,val);
+  }else
+  {
+    if( resout == 0 )
+    {
+      imx_iomux_v3_setup_multiple_pads( reset_out_pads_v1r1, 1);            
+      gpio_request(GPIO_RESET_OUT_V1R1, "RESET_OUT");
+      resout=1;        
+    }  
+    gpio_direction_output(GPIO_RESET_OUT_V1R1,val);
+  }
+}
+
 int board_init(void)
 {
 	char text[256];
@@ -566,7 +598,8 @@ int board_init(void)
 	printf("Modul: %s\n", text);  
 	kuk_GetDescription( &text[0], sizeof( text));
 	printf("%s\n", text);  
-
+	reset_out(1);
+	
 #ifdef CONFIG_FEC_MXC
 	if ( kuk_GetPeripheral( KUK_PERIPHERAL_ETHERNET) != KUK_ETHERNET_NONE)
 	{		
