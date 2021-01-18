@@ -592,7 +592,7 @@ static int detect_ipant7(struct display_info_t const *dev)
 		//TODO
 		return 0;
 	}
-	else if(chip_id == 0x54 && firm_id == 0x01 && touch_id == 0x79 && (!(strncmp(dev->mode.name, "IPANT7_V2", sizeof(dev->mode.name)))))
+	else if(chip_id == 0x54 && (firm_id == 0x01 || firm_id == 0x02) && touch_id == 0x79 && (!(strncmp(dev->mode.name, "IPANT7_V2", sizeof(dev->mode.name)))))
 	{
 		printf("%s: Version 2 \n",__func__  );
 		kuk_panel_drv.lanes = 4;
