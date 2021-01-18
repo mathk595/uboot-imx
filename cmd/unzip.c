@@ -39,6 +39,35 @@ U_BOOT_CMD(
 	"srcaddr dstaddr [dstsize]"
 );
 
+
+static int do_gzwritefile(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	struct blk_desc *bdev;
+	int ret;
+	unsigned long writebuf = 1<<20;
+
+	if (argc < 5)
+		return CMD_RET_USAGE;
+	ret = blk_get_device_by_str(argv[1], argv[2], &bdev);
+	if (ret < 0)
+		return CMD_RET_FAILURE;
+
+	if (6 < argc) {
+		writebuf = simple_strtoul(argv[6], NULL, 16);
+	}
+
+
+	ret = gzwritefile(bdev, argv[3], argv[4], argv[5], writebuf);
+
+	return 0;
+}
+
+U_BOOT_CMD(
+	gzwritefile, 8, 0, do_gzwritefile,
+	"unzip and write file to block device",
+	"<interface> <dev> <interface> <dev> <filename>\n"
+);
+
 static int do_gzwrite(cmd_tbl_t *cmdtp, int flag,
 		      int argc, char * const argv[])
 {

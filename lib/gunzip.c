@@ -14,6 +14,8 @@
 #include <u-boot/zlib.h>
 #include <div64.h>
 
+#include "fs.h"
+
 #define HEADER0			'\x1f'
 #define HEADER1			'\x8b'
 #define	ZALLOC_ALIGNMENT	16
@@ -44,7 +46,7 @@ void gzfree(void *x, void *addr, unsigned nb)
 int gzip_parse_header(const unsigned char *src, unsigned long len)
 {
 	int i, flags;
-
+	
 	/* skip header */
 	i = 10;
 	flags = src[3];
@@ -113,6 +115,276 @@ void gzwrite_progress_finish(int returnval,
 	}
 }
 
+int gzwritefile(struct blk_desc *dev,
+		const char *device,
+		const char *part,
+		const char *filename,
+		unsigned long szwritebuf)
+{
+	z_stream s;
+	int r = 0;
+	unsigned crc = 0;
+	u64 totalfilled = 0;
+	lbaint_t blksperbuf, outblock;
+	u32 expected_crc;
+	u64 payload_size;
+	int iteration = 0;
+	loff_t actread;
+	int i, flags;
+	loff_t len;
+	unsigned char *writebuf = NULL;
+	unsigned char *src = NULL;
+	u64 szexpected = 0;
+	unsigned long BUFFERSIZE;
+
+	unsigned long time;
+
+	BUFFERSIZE = szwritebuf << 3;
+
+	time = get_timer(0);
+
+	src = (unsigned char *)malloc_cache_aligned(BUFFERSIZE*3);
+
+	printf ("Unpack %s %s %s to  blkdevice \n\r", device, part, filename);
+
+	int res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
+	if (res)
+	{
+		printf("Error: could not access storage.\n");
+		return (-1);
+	}	
+	res = fs_size(filename, &len);
+	if (res)
+	{
+		printf("Error: could find file\n");
+		return (-1);
+	}
+
+	if (!szwritebuf ||
+	    (szwritebuf % dev->blksz) ||
+	    (szwritebuf < dev->blksz)) {
+		printf("%s: size %lu not a multiple of %lu\n",
+		       __func__, szwritebuf, dev->blksz);
+		return -1;
+	}
+
+	blksperbuf = szwritebuf / dev->blksz;
+	outblock = lldiv(0, dev->blksz);
+	
+	res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
+	res = fs_read(filename, (ulong)src, 0, 0xFF , &actread);
+
+	if(src[0] == 0x50 && src[1] == 0x4B && src[2] == 0x03 && src[3] == 0x04)
+	{
+		printf ("iimx/.zip file \n\r") ;
+
+		/* skip header */
+		i = 30;
+		puts ("zip file\n");
+
+		if (src[8] != DEFLATED)
+			if (src[2] != DEFLATED) {
+				puts ("Error: Bad zipped data\n");
+				return (-1);
+			}		
+		if(src[26] || src[27])
+		{
+			i +=  (src[27] << 2) |  src[26];
+		}
+		if(src[28] || src[29])
+		{
+			memcpy(&szexpected,  src + i + 4 , sizeof(szexpected));
+			szexpected = le64_to_cpu(szexpected);
+
+			memcpy(&payload_size,  src + i + 12 , sizeof(payload_size));
+			payload_size = le32_to_cpu(payload_size);
+
+		
+			i +=  (src[29] << 2) |  src[28];
+		}
+		else
+		{
+			u32 szcompressed;
+			memcpy(&szcompressed,  src + 18, sizeof(szcompressed));
+			payload_size = le32_to_cpu(szcompressed);
+
+			u32 szuncompressed;
+			memcpy(&szuncompressed,  src + 22 , sizeof(szuncompressed));
+			szexpected = le32_to_cpu(szuncompressed);
+
+		}
+		
+		
+		memcpy(&expected_crc,  src + 14, sizeof(expected_crc));
+		expected_crc = le32_to_cpu(expected_crc);
+
+	}
+	else
+	{
+		printf (".gz file \n\r") ;
+
+		/* skip header */
+		i = 10;
+		flags = src[3];
+		if (src[2] != DEFLATED || (flags & RESERVED) != 0) {
+			puts("Error: Bad gzipped data\n");
+			return -1;
+		}
+		if ((flags & EXTRA_FIELD) != 0)
+			i = 12 + src[10] + (src[11] << 8);
+		if ((flags & ORIG_NAME) != 0)
+			while (src[i++] != 0)
+				;
+		if ((flags & COMMENT) != 0)
+			while (src[i++] != 0)
+				;
+		if ((flags & HEAD_CRC) != 0)
+			i += 2;
+
+		if (i >= len-8) {
+			puts("Error: gunzip out of data in header");
+			return -1;
+		}
+
+		payload_size = len - i - 8;
+
+		res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
+		res = fs_read(filename, (ulong)src, len - 8, 8 , &actread);
+
+		memcpy(&expected_crc,  src , sizeof(expected_crc));
+		expected_crc = le32_to_cpu(expected_crc);
+		u32 szuncompressed;
+		memcpy(&szuncompressed, src + 4 , sizeof(szuncompressed));
+
+		szexpected = le32_to_cpu(szuncompressed);
+	}
+
+	printf("expected_crc 0x%x \r\n", expected_crc);
+	printf("szexpected 0x%llx \r\n", szexpected);
+	printf("payload_size 0x%llx \r\n", payload_size);
+
+	if (lldiv(szexpected, dev->blksz) > (dev->lba - outblock)) {
+		printf("%s: uncompressed size %llu exceeds device size\n",
+		       __func__, szexpected);
+		return -1;
+	}
+
+	res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
+	res = fs_read(filename, (ulong)src, 0, BUFFERSIZE , &actread);
+
+	gzwrite_progress_init(szexpected);
+
+	s.zalloc = gzalloc;
+	s.zfree = gzfree;
+
+	r = inflateInit2(&s, -MAX_WBITS);
+	if (r != Z_OK) {
+		printf("Error: inflateInit2() returned %d\n", r);
+		return -1;
+	}
+
+	memcpy(src+BUFFERSIZE, src + i, BUFFERSIZE-i);
+
+	s.next_in = src+BUFFERSIZE;
+	s.avail_in = BUFFERSIZE-i;
+	writebuf = (unsigned char *)malloc_cache_aligned(szwritebuf);
+
+	u64 readpos = 0;
+	int stop_reading = 0;
+
+	/* decompress until deflate stream ends or end of file */
+	do {
+		if (s.avail_in == 0) {
+			printf("%s: weird termination with result %d\n",
+			       __func__, r);
+			break;
+		}
+
+		/* run inflate() on input until output buffer not full */
+		do {
+			unsigned long blocks_written;
+			int numfilled;
+			lbaint_t writeblocks;
+
+			
+			s.avail_out = szwritebuf;
+			s.next_out = writebuf;
+			r = inflate(&s, Z_SYNC_FLUSH);
+			if ((r != Z_OK) &&
+			    (r != Z_STREAM_END)) {
+				printf("Error: inflate() returned %d\n", r);
+				goto out;
+			}
+
+			numfilled = szwritebuf - s.avail_out;
+			crc = crc32(crc, writebuf, numfilled);
+			totalfilled += numfilled;
+			if (numfilled < szwritebuf) {
+				writeblocks = (numfilled+dev->blksz-1)
+						/ dev->blksz;
+				memset(writebuf+numfilled, 0,
+				       dev->blksz-(numfilled%dev->blksz));
+			} else {
+				writeblocks = blksperbuf;
+			}
+
+			if((s.avail_in < BUFFERSIZE/2) && !stop_reading)
+			{
+				readpos += BUFFERSIZE;
+
+				res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
+				res = fs_read(filename, (ulong)src, readpos, BUFFERSIZE , &actread);
+
+				if(actread < BUFFERSIZE)
+				{
+					stop_reading = 1;
+				}
+
+				memmove(src+BUFFERSIZE, s.next_in, s.avail_in);
+				memcpy(src+BUFFERSIZE+s.avail_in, src, actread);
+
+				s.avail_in += actread;
+				s.next_in = src+BUFFERSIZE;
+
+			}
+
+			gzwrite_progress(iteration++,
+					 totalfilled,
+					 szexpected);
+			
+			blocks_written = blk_dwrite(dev, outblock,
+						    writeblocks, writebuf);
+			outblock += blocks_written;
+
+			if (ctrlc()) {
+				puts("abort\n");
+				goto out;
+			}
+			WATCHDOG_RESET();
+		} while (s.avail_out == 0);
+		/* done when inflate() says it's done */
+	} while (r != Z_STREAM_END);
+
+	if ((szexpected != totalfilled) ||
+	    (crc != expected_crc))
+		r = -1;
+	else
+		r = 0;
+
+out:
+	gzwrite_progress_finish(r, totalfilled, szexpected,
+				expected_crc, crc);
+	free(writebuf);
+	inflateEnd(&s);
+
+	time = get_timer(time);
+	printf("%s restored in %lu ms \r\n", filename, time);
+
+	return 0;
+}
+
+
+
 int gzwrite(unsigned char *src, int len,
 	    struct blk_desc *dev,
 	    unsigned long szwritebuf,
@@ -129,7 +401,7 @@ int gzwrite(unsigned char *src, int len,
 	u32 expected_crc;
 	u32 payload_size;
 	int iteration = 0;
-
+	
 	if (!szwritebuf ||
 	    (szwritebuf % dev->blksz) ||
 	    (szwritebuf < dev->blksz)) {
@@ -146,7 +418,7 @@ int gzwrite(unsigned char *src, int len,
 
 	blksperbuf = szwritebuf / dev->blksz;
 	outblock = lldiv(startoffs, dev->blksz);
-
+	
 	/* skip header */
 	i = 10;
 	flags = src[3];
@@ -188,7 +460,7 @@ int gzwrite(unsigned char *src, int len,
 		       __func__, szexpected);
 		return -1;
 	}
-
+	
 	gzwrite_progress_init(szexpected);
 
 	s.zalloc = gzalloc;
@@ -203,7 +475,7 @@ int gzwrite(unsigned char *src, int len,
 	s.next_in = src + i;
 	s.avail_in = payload_size+8;
 	writebuf = (unsigned char *)malloc_cache_aligned(szwritebuf);
-
+		
 	/* decompress until deflate stream ends or end of file */
 	do {
 		if (s.avail_in == 0) {
@@ -217,7 +489,7 @@ int gzwrite(unsigned char *src, int len,
 			unsigned long blocks_written;
 			int numfilled;
 			lbaint_t writeblocks;
-
+		
 			s.avail_out = szwritebuf;
 			s.next_out = writebuf;
 			r = inflate(&s, Z_SYNC_FLUSH);

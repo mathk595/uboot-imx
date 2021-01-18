@@ -479,6 +479,17 @@ int gzwrite(unsigned char *src, int len,
 	    u64 startoffs,
 	    u64 szexpected);
 
+/**
+ * decompress and write gzipped image from file to block device
+ *
+ * @param	dev		block device descriptor
+ */
+int gzwritefile(struct blk_desc *dev,
+		const char *device,
+		const char *part,
+		const char *filename,
+		unsigned long szwritebuf);		
+
 /* lib/lz4_wrapper.c */
 int ulz4fn(const void *src, size_t srcn, void *dst, size_t *dstn);
 
