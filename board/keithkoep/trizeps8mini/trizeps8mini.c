@@ -40,38 +40,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define GPIO_PAD_PU_CTRL (PAD_CTL_DSE6 | PAD_CTL_PUE | PAD_CTL_PE)
 #define GPIO_PAD_PD_CTRL (PAD_CTL_DSE6 |               PAD_CTL_PE)
 
-#ifdef CONFIG_SYS_I2C_MXC
 
-#define I2C_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PE)
-#define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
-
-struct i2c_pads_info i2c_pad_info1 = {
-	.scl = {
-		.i2c_mode = IMX8MM_PAD_I2C1_SCL_I2C1_SCL | PC,
-		.gpio_mode = IMX8MM_PAD_I2C1_SCL_GPIO5_IO14 | PC,
-		.gp = IMX_GPIO_NR(5, 14),
-	},
-	.sda = {
-		.i2c_mode = IMX8MM_PAD_I2C1_SDA_I2C1_SDA | PC,
-		.gpio_mode = IMX8MM_PAD_I2C1_SDA_GPIO5_IO15 | PC,
-		.gp = IMX_GPIO_NR(5, 15),
-	},
-};
-#if 0
-struct i2c_pads_info i2c_pad_info2 = {
-	.scl = {
-		.i2c_mode = IMX8MM_PAD_I2C2_SCL_I2C2_SCL | PC,
-		.gpio_mode = IMX8MM_PAD_I2C2_SCL_GPIO5_IO16 | PC,
-		.gp = IMX_GPIO_NR(5, 16),
-	},
-	.sda = {
-		.i2c_mode = IMX8MM_PAD_I2C2_SDA_I2C2_SDA | PC,
-		.gpio_mode = IMX8MM_PAD_I2C2_SDA_GPIO5_IO17 | PC,
-		.gp = IMX_GPIO_NR(5, 17),
-	},
-};
-#endif
-#endif
 
 static iomux_v3_cfg_t const uart_pads[] = {
 	IMX8MM_PAD_UART1_RXD_UART1_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
@@ -576,10 +545,6 @@ int board_init(void)
 	//init_camera_ov5640();	
 	//setup_pcie(); /* environment not read here */
 
-#ifdef CONFIG_SYS_I2C_MXC
-	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);	
-	//setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
-#endif
 	/* Enable Uart4/Uart2 pre-set in imx8mm_bl31_setup.c bl31_early_platform_setup2() */
 	setup_periph2mcu();
 	
