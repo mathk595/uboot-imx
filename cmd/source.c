@@ -149,12 +149,29 @@ source (ulong addr, const char *fit_uname)
 		len = (ulong)fit_len;
 		break;
 #endif
+	case IMAGE_FORMAT_AUTOBOOT:
+
+		//debug ("IMAGE_FORMAT_AUTOBOOT \r\n");
+		/* get length of script */
+		data = (u32 *)(buf);
+
+		char *test = (char *) data;
+		len = 0;
+		while(strncmp("#!/end", test, 6))
+		{
+			if(*test == 0x0D)
+				*test = 0x0A;
+			test++;
+			len++;
+		}
+
+		break;
 	default:
 		puts ("Wrong image format for \"source\" command\n");
 		return 1;
 	}
 
-	debug ("** Script length: %ld\n", len);
+	debug ("** Script length: %ld data 0x%x\n", len, data);
 	return run_command_list((char *)data, len, 0);
 }
 

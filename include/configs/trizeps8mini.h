@@ -306,13 +306,13 @@
 	KUK_FUSE_PRODUCTION \
 	"display=auto\0"                              \
 	"pcie=none\0"                              \
-        "append_bootargs=androidboot.selinux=permissive\0"\
+	"append_bootargs=androidboot.selinux=permissive\0"\
 	"script=boot.scr\0" \
 	"splashpos=m,m\0"			   \
 	"image=Image\0"                            \
 	"console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200\0" \
 	"fdt_addr=0x43000000\0"			    \
-        "script_addr="__stringify(SCRIPT_ADDR)"\0"  \
+    "script_addr="__stringify(SCRIPT_ADDR)"\0"  \
 	"fdt_high=0xffffffffffffffff\0"	            \
 	"boot_fdt=try\0"                            \
 	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0"    \
@@ -331,12 +331,16 @@
 	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0"  \
 	"mmcpartext4=1\0"                           \
 	"mmcautodetect=yes\0"                       \
-        "bootsector=66\0"                           \
+    "bootsector=66\0"                           \
 	"brickme_sd=mmc erase $bootsector 10\0"     \
-        "brickme_mmc=mmc partconf 0 1 0 1 ; mmc erase $bootsector 10 ;mmc partconf 0 1 1 1 ; mmc erase $bootsector 10 ;mmc partconf 0 0 0 0 ; mmc erase $bootsector 10 \0" \
+    "brickme_mmc=mmc partconf 0 1 0 1 ; mmc erase $bootsector 10 ;mmc partconf 0 1 1 1 ; mmc erase $bootsector 10 ;mmc partconf 0 0 0 0 ; mmc erase $bootsector 10 \0" \
+	"updateusb=1\0" \
+	"updatesd1=1\0" \
+	"loadupdatescriptfatusb=if test -n ${updateusb} = 1; then if usb start; then fatload usb 0 ${script_addr} autoboot.bat; fi; fi;\0 "            \
+	"loadupdatescriptfatsd=if test -n ${updatesd1} = 1; then fatload mmc 1 ${script_addr} autoboot.bat; fi;\0"            \
 	"update_bl=mmc partconf 0 0 0 0 ; ums 0 mmc 0 \0"	                                    \
-        "serial_download=i2c dev 2; i2c mw 0x10 2.1 2 \0"                                           \
-        "serial_download2=mw 0x30390098 0x40000000; reset \0"                                           \
+    "serial_download=i2c dev 2; i2c mw 0x10 2.1 2 \0"                                           \
+    "serial_download2=mw 0x30390098 0x40000000; reset \0"                                           \
 	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 "                   \
 	"loadbootscriptext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${script_addr} ${script};\0"      \
 	"loadbootscriptfat=fatload mmc ${mmcdev}:${mmcpart} ${script_addr} ${script};\0"            \
@@ -351,8 +355,8 @@
 	"loadfdtext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${fdt_addr} ${fdt_file}\0"               \
 	"loadfdtandroid=fatload mmc ${mmcdev}:${partfdtandroid} ${fdt_addr} ${fdt_file}\0"          \
 	"loadfdt=echo loading fdt..;"                                                               \
-            "if run loadfdtext4; then echo loadtdext4 ok; else echo trying from fat....; "          \
-            "if run loadfdtfat;  then echo loadftdfat ok; fi; fi;\0"                                \
+    "if run loadfdtext4; then echo loadtdext4 ok; else echo trying from fat....; "          \
+    "if run loadfdtfat;  then echo loadftdfat ok; fi; fi;\0"                                \
 	"loadbootiot=echo Try Booting IoT Core ...;  	part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = 1d30adf8-0aef-4d83-b78c-ac719086c709; then if read mmc ${mmcdev}:${bootpar} 0x40800000 0 1000; then usb start; bootm 0x40800000; fi; fi; done;\0"  \
 	"loadbootenterprise=echo Try Booting IoT...;  	part list mmc ${mmcdev} devplist; for bootpar in ${devplist}; do part type mmc ${mmcdev}:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = c12a7328-f81f-11d2-ba4b-00a0c93ec93b; then if mmc dev ${mmcdev} ${emmcbootpart}; mmc read 0x40800000 0xBFA 1000; then usb start; mmc dev ${mmcdev} 1; bootm 0x40800000; fi; fi; done;\0"  \
 	"loadinstallenterprise=echo Try Install IoT...; part list mmc 1 devplist; for bootpar in ${devplist}; do part type mmc 1:${bootpar} part_type; if test -n ${part_type} && test ${part_type} = c12a7328-f81f-11d2-ba4b-00a0c93ec93b; then if mmc dev ${mmcdev} ${emmcbootpart}; mmc read 0x40800000 0xBFA 1000; then usb start; mmc dev ${mmcdev} 1; bootm 0x40800000; fi; fi; done;\0"  \
@@ -390,7 +394,12 @@
 
 #ifndef CONFIG_BOOTCOMMAND
 #define CONFIG_BOOTCOMMAND \
-	"mmc dev ${mmcdev};mmc partconf ${mmcdev}; if mmc rescan; "\
+		"mmc dev ${mmcdev};mmc partconf ${mmcdev}; "\
+		"if run loadupdatescriptfatusb; then run bootscript; " \
+		"else if run loadupdatescriptfatsd; then run bootscript; " \
+		"fi; " \
+		"fi; " \
+		"if mmc rescan; "\
         "then "\
 		"run loadbootenterprise; " \
 		"run loadinstallenterprise; " \

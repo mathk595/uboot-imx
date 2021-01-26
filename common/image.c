@@ -883,6 +883,10 @@ int genimg_get_format(const void *img_addr)
 		return IMAGE_FORMAT_ANDROID;
 #endif
 
+	char *buf = (char *) img_addr;
+	if(strncmp("#!/autoboot.bat", buf, 15) == 0)
+		return IMAGE_FORMAT_AUTOBOOT;
+
 	return IMAGE_FORMAT_INVALID;
 }
 
