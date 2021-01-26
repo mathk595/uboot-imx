@@ -732,7 +732,12 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 		/* If we are using uncompressed kernel image, copy it directly to
 		 * hdr->kernel_addr, if we are using compressed lz4 kernel image,
 		 * we need to decompress the kernel image first. */
+
 		if (image_arm64((void *)((ulong)hdr + hdr->page_size))) {
+			printf("boota: image_arm64 memcpy 0x%lx-0x%lx 0x%lx %ld KiB\n",
+			 (ulong)hdr->kernel_addr, (ulong)hdr->kernel_addr+(long) hdr->kernel_size,
+			 (ulong)hdr + hdr->page_size,
+			 (long) hdr->kernel_size/1024);	
 			memcpy((void *)(long)hdr->kernel_addr,
 					(void *)((ulong)hdr + hdr->page_size), hdr->kernel_size);
 		} else {
@@ -937,7 +942,7 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 
 	sprintf(boot_addr_start, "0x%lx", addr);
 	sprintf(ramdisk_addr, "0x%x:0x%x", hdr->ramdisk_addr, hdr->ramdisk_size);
-	sprintf(fdt_addr_start, "0x%x", fdt_addr);
+	sprintf(fdt_addr_start, "0x%x", hdr->second_addr);
 
 /* when CONFIG_SYSTEM_RAMDISK_SUPPORT is enabled and it's for Android Auto, if it's not recovery mode
  * do not pass ramdisk addr*/
@@ -966,18 +971,23 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 	if (check_image_arm64) {
 		char *stop_boot_env=env_get("boot_debug");
 #ifdef CONFIG_CMD_BOOTI
+		printf("Do_booti cmd:(%s) boot_addr:(%s) ramdisk:(%s) fdt:(%s)\n", boot_args[0],boot_args[1],boot_args[2],boot_args[3]);
+
 		if( strcmp("1", stop_boot_env) == 0 )
 		{
 		  printf("Stop do_booti....");		  
 		  return 1;
 		}
+		
 		do_booti(NULL, 0, 4, boot_args);
 #else
 		debug("please enable CONFIG_CMD_BOOTI when kernel are Image");
 #endif
 	} else {
+		printf("Do_bootm cmd:(%s) boot_addr:(%s) ramdisk:(%s) fdt:(%s)\n", boot_args[0],boot_args[1],boot_args[2],boot_args[3]);
 		do_bootm(NULL, 0, 4, boot_args);
 	}
+
 
 	/* This only happens if image is somehow faulty so we start over */
 	do_reset(NULL, 0, 0, NULL);
