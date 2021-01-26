@@ -93,8 +93,8 @@ void gzwrite_progress(int iteration,
 		     u64 bytes_written,
 		     u64 total_bytes)
 {
-	if (0 == (iteration & 3))
-		printf("%llu/%llu\r", bytes_written, total_bytes);
+	if (0 == (iteration & 7))
+		printf("%llu%% %llu/%llu\r", (100 * bytes_written / total_bytes) , bytes_written, total_bytes);
 }
 
 __weak
@@ -119,7 +119,8 @@ int gzwritefile(struct blk_desc *dev,
 		const char *device,
 		const char *part,
 		const char *filename,
-		unsigned long szwritebuf)
+		unsigned long szwritebuf,
+		int force)
 {
 	z_stream s;
 	int r = 0;
@@ -263,10 +264,13 @@ int gzwritefile(struct blk_desc *dev,
 	printf("szexpected 0x%llx \r\n", szexpected);
 	printf("payload_size 0x%llx \r\n", payload_size);
 
-	if (lldiv(szexpected, dev->blksz) > (dev->lba - outblock)) {
-		printf("%s: uncompressed size %llu exceeds device size\n",
-		       __func__, szexpected);
-		return -1;
+	if(!force)
+	{
+		if (lldiv(szexpected, dev->blksz) > (dev->lba - outblock)) {
+			printf("%s: uncompressed size %llu exceeds device size %llu\n",
+				__func__, szexpected, dev->blksz*dev->lba);
+			return -1;
+		}
 	}
 
 	res = fs_set_blk_dev(device, part, FS_TYPE_FAT);

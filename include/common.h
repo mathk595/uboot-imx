@@ -488,7 +488,8 @@ int gzwritefile(struct blk_desc *dev,
 		const char *device,
 		const char *part,
 		const char *filename,
-		unsigned long szwritebuf);		
+		unsigned long szwritebuf,
+		int force);		
 
 /* lib/lz4_wrapper.c */
 int ulz4fn(const void *src, size_t srcn, void *dst, size_t *dstn);

@@ -45,6 +45,7 @@ static int do_gzwritefile(cmd_tbl_t *cmdtp, int flag, int argc, char * const arg
 	struct blk_desc *bdev;
 	int ret;
 	unsigned long writebuf = 1<<20;
+	int force = 0;
 
 	if (argc < 5)
 		return CMD_RET_USAGE;
@@ -56,8 +57,12 @@ static int do_gzwritefile(cmd_tbl_t *cmdtp, int flag, int argc, char * const arg
 		writebuf = simple_strtoul(argv[6], NULL, 16);
 	}
 
+	if (7 < argc) {
+		force = simple_strtoul(argv[7], NULL, 16);
+	}
 
-	ret = gzwritefile(bdev, argv[3], argv[4], argv[5], writebuf);
+
+	ret = gzwritefile(bdev, argv[3], argv[4], argv[5], writebuf, force);
 
 	return 0;
 }
