@@ -104,6 +104,8 @@ void gzwrite_progress_finish(int returnval,
 			     u32 expected_crc,
 			     u32 calculated_crc)
 {
+	printf("%llu%% %llu/%llu\r", (100 * bytes_written / total_bytes) , bytes_written, total_bytes);
+
 	if (0 == returnval) {
 		printf("\n\t%llu bytes, crc 0x%08x\n",
 		       total_bytes, calculated_crc);
@@ -123,7 +125,7 @@ int gzwritefile(struct blk_desc *dev,
 		int force)
 {
 	z_stream s;
-	int r = 0;
+	int r = -1;
 	unsigned crc = 0;
 	u64 totalfilled = 0;
 	lbaint_t blksperbuf, outblock;
@@ -146,7 +148,7 @@ int gzwritefile(struct blk_desc *dev,
 
 	src = (unsigned char *)malloc_cache_aligned(BUFFERSIZE*3);
 
-	printf ("Unpack %s %s %s to  blkdevice \n\r", device, part, filename);
+	printf ("Unpack %s %s %s to blkdevice \n\r", device, part, filename);
 
 	int res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
 	if (res)
@@ -177,12 +179,11 @@ int gzwritefile(struct blk_desc *dev,
 
 	if(src[0] == 0x50 && src[1] == 0x4B && src[2] == 0x03 && src[3] == 0x04)
 	{
-		printf ("iimx/.zip file \n\r") ;
+//		printf (".imz/.zip file \n\r") ;
 
 		/* skip header */
 		i = 30;
-		puts ("zip file\n");
-
+		
 		if (src[8] != DEFLATED)
 			if (src[2] != DEFLATED) {
 				puts ("Error: Bad zipped data\n");
@@ -222,7 +223,7 @@ int gzwritefile(struct blk_desc *dev,
 	}
 	else
 	{
-		printf (".gz file \n\r") ;
+//		printf (".gz file \n\r") ;
 
 		/* skip header */
 		i = 10;
@@ -259,16 +260,19 @@ int gzwritefile(struct blk_desc *dev,
 
 		szexpected = le32_to_cpu(szuncompressed);
 	}
+	printf("\r\n");
 
-	printf("expected_crc 0x%x \r\n", expected_crc);
-	printf("szexpected 0x%llx \r\n", szexpected);
-	printf("payload_size 0x%llx \r\n", payload_size);
+	printf("CRC: 0x%x \r\n", expected_crc);
+	printf("Uncompressed size: %llu \r\n", szexpected);
+	printf("File size: %llu \r\n", payload_size);
+
+	printf("\r\n");
 
 	if(!force)
 	{
 		if (lldiv(szexpected, dev->blksz) > (dev->lba - outblock)) {
 			printf("%s: uncompressed size %llu exceeds device size %llu\n",
-				__func__, szexpected, dev->blksz*dev->lba);
+				__func__, szexpected, (u64)dev->blksz*dev->lba);
 			return -1;
 		}
 	}
@@ -384,7 +388,7 @@ out:
 	time = get_timer(time);
 	printf("%s restored in %lu ms \r\n", filename, time);
 
-	return 0;
+	return r;
 }
 
 
