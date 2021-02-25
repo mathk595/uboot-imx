@@ -67,6 +67,7 @@ static void lvds_init(struct display_info_t const *dev)
 	int i2c_bus = 2;
 	int ret;
 	uint8_t i = 0;
+
 	uint8_t addr[] = { 0x09, 0x0A, 0x0A, 0x0B, 0x0D, 0x10, 0x11, 0x12, 0x13, 0x18, 0x19, 0x1A, 0x1B, 0x20, 0x21, 0x22, 0x23,
 					   0x24, 0x25, 0x26, 0x27, 0x28, 0x29 ,0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x32, 0x33,
 					   0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x0D, 0xFF};
@@ -74,7 +75,10 @@ static void lvds_init(struct display_info_t const *dev)
 					   0x00, 0x03, 0x00, 0x00, 0x21, 0x00 ,0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00,
 					   0x9c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xFF};
 
-	if(strncmp(dev->mode.name, "IPANT10", 7) == 0)
+	int module;
+    module = kuk_GetModule();
+
+	if(strncmp(dev->mode.name, "LVDS_SCF1001C44GGU05", sizeof(dev->mode.name)) == 0)
 	{
 		//DataImage
 		valb[7]  = 0x2A;	
@@ -84,7 +88,7 @@ static void lvds_init(struct display_info_t const *dev)
 		valb[29] = 0x03;
 		valb[33] = 0x30;
     }
-	else if(strncmp(dev->mode.name, "PCONXS", 6) == 0)
+	else if(strncmp(dev->mode.name, "PCONXS", sizeof(dev->mode.name)) == 0)
 	{
 		//printf("%s: -> PCONXS\n", __func__);
 		valb[2]  = 0x03;	
@@ -100,7 +104,7 @@ static void lvds_init(struct display_info_t const *dev)
 		valb[37] = 0xA0;
 		valb[39] = 0x0C;
     }
-	else if(strncmp(dev->mode.name, "IPANM7", 6) == 0)
+	else if(strncmp(dev->mode.name, "LVDS_ATM0700D6J", sizeof(dev->mode.name)) == 0)
 	{
 		//printf("%s: -> IPANM7\n", __func__);
 		valb[2]  = 0x03;	
@@ -116,9 +120,9 @@ static void lvds_init(struct display_info_t const *dev)
 		valb[37] = 0xA0;
 		valb[39] = 0x0C;
     }
-	else if(strncmp(dev->mode.name, "IPANT7_V2", 10) == 0)
+	else if(strncmp(dev->mode.name, "LVDS_ATM0700L61", sizeof(dev->mode.name)) == 0)
 	{
-		printf("%s: -> IPANT7_V2\n", __func__);
+		printf("%s: -> LVDS_ATM0700L61\n", __func__);
 		valb[2]  = 0x03;	
 		valb[3] = 0x14;
 		valb[5] = 0x20;
@@ -133,8 +137,29 @@ static void lvds_init(struct display_info_t const *dev)
 		valb[39] = 0x0C;
 
 		gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT EN");
-		gpio_direction_output(IMX_GPIO_NR(3, 22), 0);
+		if(module == KUK_MODULE_TRIZEPS8MINI)
+			gpio_direction_output(IMX_GPIO_NR(3, 22), 0);
+		else
+			gpio_direction_output(IMX_GPIO_NR(3, 22), 1);
 	}
+	else if (strncmp(dev->mode.name, "LVDS_AM19201080D1", sizeof(dev->mode.name)) == 0)
+	{
+		printf("%s: -> AM19201080D1\n", __func__);
+		valb[2] = 0x83;
+		valb[3] = 0x28;
+		valb[7] = 0x48;
+		valb[9] = 0x6C;	
+		valb[13] = 0x80;
+		valb[14] = 0x07;
+		valb[17] = 0x38;
+		valb[18] = 0x04;
+		valb[25] = 0x23;
+		valb[30] = 0x0A;
+		valb[33] = 0x23;
+		valb[37] = 0x46;
+		valb[39] = 0x0A;
+	}
+	
 	
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
@@ -381,7 +406,7 @@ void disp_mix_lcdif_clks_enable(ulong gpr_base, bool enable)
 
 struct mipi_dsi_client_dev kuk_panel_drv = {
 	.channel = 0,
-	.lanes   = 2,
+	.lanes   = 4,
 	.format  = MIPI_DSI_FMT_RGB888,
 	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE ,
 	.name = "default",
@@ -572,31 +597,31 @@ static int detect_ipant7(struct display_info_t const *dev)
 	ret = dm_i2c_read(main_dev, FT5X06_OP_REG_FT5201ID, &touch_id, 1);
 
 	//printf("%s: ChipID 0x%x, FirmwareID 0x%x, TouchID 0x%x\n", __func__, chip_id ,firm_id, touch_id );
-	if((chip_id == 0x14 && firm_id == 0x06 && touch_id == 0x51) && (!(strncmp(dev->mode.name, "IPANT7", sizeof(dev->mode.name)))))
+	if((chip_id == 0x14 && firm_id == 0x06 && touch_id == 0x51) && (!(strncmp(dev->mode.name, "RGB_ATM0700D6J", sizeof(dev->mode.name)))))
 	{
 		printf("%s: Version 1 AZ Coverlens Display \n",__func__  );
 		kuk_panel_drv.lanes = 2;
-		kuk_panel_drv.name = "IPANT7";
+		kuk_panel_drv.name = "RGB_ATM0700D6J";
 		return 1;
 	}
-	else if((chip_id == 0x0A && firm_id == 0x3 && touch_id == 0x79) && (!(strncmp(dev->mode.name, "IPANT7", sizeof(dev->mode.name)))))
+	else if((chip_id == 0x0A && firm_id == 0x3 && touch_id == 0x79) && (!(strncmp(dev->mode.name, "RGB_ATM0700D6J", sizeof(dev->mode.name)))))
 	{
 		printf("%s: Version 1 AZ Display \n",__func__  );
 		kuk_panel_drv.lanes = 2;
-		kuk_panel_drv.name = "IPANT7";
+		kuk_panel_drv.name = "RGB_ATM0700D6J";
 		return 1;
 	}
-	else if(((chip_id == 0x0A && firm_id == 0x08 && touch_id == 0x79) && (!(strncmp(dev->mode.name, "IPANT7", sizeof(dev->mode.name))))))
+	else if(((chip_id == 0x0A && firm_id == 0x08 && touch_id == 0x79) && (!(strncmp(dev->mode.name, "RGB_ATM0700D6J", sizeof(dev->mode.name))))))
 	{
 		printf("%s: Version 1 HT Display  \n",__func__  );
 		//TODO
 		return 0;
 	}
-	else if(chip_id == 0x54 && (firm_id == 0x01 || firm_id == 0x02) && touch_id == 0x79 && (!(strncmp(dev->mode.name, "IPANT7_V2", sizeof(dev->mode.name)))))
+	else if(chip_id == 0x54 && (firm_id == 0x01 || firm_id == 0x02) && touch_id == 0x79 && (!(strncmp(dev->mode.name, "LVDS_ATM0700L61", sizeof(dev->mode.name)))))
 	{
 		printf("%s: Version 2 \n",__func__  );
 		kuk_panel_drv.lanes = 4;
-		kuk_panel_drv.name = "IPANT7_V2";
+		kuk_panel_drv.name = "LVDS_ATM0700L61";
 		return 1;
 	}
 	else 
@@ -615,6 +640,20 @@ static int detect_ipanm7(struct display_info_t const *dev)
 	int ret;
 
 	//printf("%s:  %s \n", __func__, dev->mode.name);
+
+	//Check LVDS
+	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
+	if (ret) {
+		//printf("%s: No bus %d\n", __func__, i2c_bus);
+		return 0;
+	}
+	
+	ret = dm_i2c_probe(bus, LVDS_ID, 0, &main_dev);
+	if (ret) {
+		//printf("%s: Can't find device id=0x%x, on bus %d\n",
+		//	__func__, LVDS_ID, i2c_bus);
+		return 0;
+	}
 	
 	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
@@ -635,7 +674,7 @@ static int detect_ipanm7(struct display_info_t const *dev)
 	}
 	
 	kuk_panel_drv.lanes = 4;
-	kuk_panel_drv.name = "IPANM7";
+	kuk_panel_drv.name = "LVDS_ATM0700D6J";
 	
 	return 1;
 }
@@ -668,7 +707,7 @@ static int detect_ipant10(struct display_info_t const *dev)
 	}
 		
 	kuk_panel_drv.lanes = 4;
-	kuk_panel_drv.name = "IPANT10";
+	kuk_panel_drv.name = "LVDS_SCF1001C44GGU05";
 
 	return 1;
 }
@@ -742,7 +781,7 @@ static int detect_display(struct display_info_t const *dev)
 				gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
 
 				kuk_panel_drv.lanes = 4;
-				kuk_panel_drv.name = "IPANT10";
+				kuk_panel_drv.name = "LVDS_SCF1001C44GGU05";
 			}
 			else if(!(strncmp(s, "IPANT7", sizeof(s))))
 			{
@@ -750,12 +789,15 @@ static int detect_display(struct display_info_t const *dev)
 				gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
 
 				kuk_panel_drv.lanes = 2;
-				kuk_panel_drv.name = "IPANT7";
+				kuk_panel_drv.name = "RGB_ATM0700D6J";
 			}
 			else if(!(strncmp(s, "PCONXS", sizeof(s))))
 			{
 				gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
 				gpio_direction_output(IMX_GPIO_NR(3, 23), 0);
+
+				gpio_request(IMX_GPIO_NR(4, 14), "BL_EN");
+				gpio_direction_output(IMX_GPIO_NR(4, 14), 1);
 
 				kuk_panel_drv.lanes = 4;
 				kuk_panel_drv.name = "PCONXS";
@@ -766,7 +808,7 @@ static int detect_display(struct display_info_t const *dev)
 				gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
 
 				kuk_panel_drv.lanes = 4;
-				kuk_panel_drv.name = "IPANM7";
+				kuk_panel_drv.name = "LVDS_ATM0700D6J";
 			}
 			else if(!(strncmp(s, "IPANT7_V2", sizeof(s))))
 			{
@@ -774,9 +816,16 @@ static int detect_display(struct display_info_t const *dev)
 				gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
 
 				kuk_panel_drv.lanes = 4;
-				kuk_panel_drv.name = "IPANT7_V2";
+				kuk_panel_drv.name = "LVDS_ATM0700L61";
 			}
+			else if (!(strncmp(s, "LVDS_AM19201080D1", sizeof(s))))
+			{
+				gpio_request(IMX_GPIO_NR(4, 14), "BL_EN");
+				gpio_direction_output(IMX_GPIO_NR(4, 14), 1);
 
+				kuk_panel_drv.lanes = 4;
+				kuk_panel_drv.name = "LVDS_AM19201080D1";
+			}
 
 			return 1;
 		}
@@ -785,22 +834,22 @@ static int detect_display(struct display_info_t const *dev)
 			return 0;
 		}
 	}
-	//printk("%s: Try autodetect... %s \n", __func__, dev->mode.name);
+	printk("%s: Try autodetect... %s \n", __func__, dev->mode.name);
 	module = kuk_GetModule();
 
-	if((!(strncmp(dev->mode.name, "IPANT7", sizeof(dev->mode.name)))) & (module == KUK_MODULE_TRIZEPS8MINI))
+	if((!(strncmp(dev->mode.name, "RGB_ATM0700D6J", sizeof(dev->mode.name)))) & (module == KUK_MODULE_TRIZEPS8MINI))
 	{
 		return detect_ipant7(dev);
 	}
-	else if((!(strncmp(dev->mode.name, "IPANT7_V2", sizeof(dev->mode.name)))) & (module == KUK_MODULE_TRIZEPS8MINI))
+	else if((!(strncmp(dev->mode.name, "LVDS_ATM0700L61", sizeof(dev->mode.name)))))
 	{
 		return detect_ipant7(dev);
 	}
-	else if((!(strncmp(dev->mode.name, "IPANM7", sizeof(dev->mode.name)))) & (module == KUK_MODULE_MYON2))
+	else if((!(strncmp(dev->mode.name, "LVDS_ATM0700D6J", sizeof(dev->mode.name)))) & (module == KUK_MODULE_MYON2))
 	{
 		return detect_ipanm7(dev);
 	}
-	else if(!(strncmp(dev->mode.name, "IPANT10", sizeof(dev->mode.name))))
+	else if(!(strncmp(dev->mode.name, "LVDS_SCF1001C44GGU05", sizeof(dev->mode.name))))
 	{
 		return detect_ipant10(dev);
 	}
@@ -808,7 +857,7 @@ static int detect_display(struct display_info_t const *dev)
 	{
 		return detect_pconxs(dev);
 	}
-	else if(!(strncmp(dev->mode.name, "MIPI2HDMI", sizeof(dev->mode.name))))
+	else if(!(strncmp(dev->mode.name, "HDMI_1920x1080", sizeof(dev->mode.name))))
 	{
 		return adv7535_init(dev);
 	}
@@ -821,9 +870,9 @@ struct display_info_t const displays[] = {{
 	.addr = 0,
 	.pixfmt = 24,
 	.detect = detect_display,
-	.enable	= do_display_default,
+	.enable	= do_enable_mipi2lvds,
 	.mode	= {
-		.name			= "MIPI2KUK",
+		.name			= "G104XVN01",
 		.refresh		= 60,
 		.xres			= 1024,
 		.yres			= 768,
@@ -863,7 +912,7 @@ struct display_info_t const displays[] = {{
 	.detect = detect_display,
 	.enable	= do_enable_mipi2lvds,
 	.mode	= {
-		.name			= "IPANT10",
+		.name			= "LVDS_SCF1001C44GGU05",
 		.refresh		= 60,
 		.xres			= 1280,
 		.yres			= 800,
@@ -876,26 +925,6 @@ struct display_info_t const displays[] = {{
 		.vsync_len		= 3,
 		.sync			= FB_SYNC_EXT,
 		.vmode			= FB_VMODE_NONINTERLACED
-} }, {	
-	.bus = LCDIF_BASE_ADDR,
-	.addr = 0,
-	.pixfmt = 24,
-	.detect = detect_display,
-	.enable	= do_enable_mipi2hdmi,
-	.mode	= {
-		.name			= "MIPI2HDMI",
-		.refresh		= 60,
-		.xres			= 1920,
-		.yres			= 1080,
-		.pixclock		= 6734, /* 148500000 */
-		.left_margin	= 148,
-		.right_margin	= 88,
-		.upper_margin	= 36,
-		.lower_margin	= 4,
-		.hsync_len		= 44,
-		.vsync_len		= 5,
-		.sync			= FB_SYNC_EXT,
-		.vmode			= FB_VMODE_NONINTERLACED
 } }, {
 	.bus = LCDIF_BASE_ADDR,
 	.addr = 0,
@@ -903,7 +932,7 @@ struct display_info_t const displays[] = {{
 	.detect = detect_display,
 	.enable	= do_enable_mipi2lvds,
 	.mode	= {
-		.name			= "IPANT7_V2",
+		.name			= "LVDS_ATM0700L61",
 		.refresh		= 60,
 		.xres			= 1024,
 		.yres			= 600,
@@ -923,7 +952,7 @@ struct display_info_t const displays[] = {{
 	.detect = detect_display,
 	.enable	= do_enable_mipi2rgb,
 	.mode	= {
-		.name			= "IPANT7",
+		.name			= "RGB_ATM0700D6J",
 		.refresh		= 60,
 		.xres			= 800,
 		.yres			= 480,
@@ -943,7 +972,7 @@ struct display_info_t const displays[] = {{
 	.detect = detect_display,
 	.enable	= do_enable_mipi2lvds,
 	.mode	= {
-		.name			= "IPANM7",
+		.name			= "LVDS_ATM0700D6J",
 		.refresh		= 60,
 		.xres			= 800,
 		.yres			= 480,
@@ -956,6 +985,47 @@ struct display_info_t const displays[] = {{
 		.vsync_len		= 10,
 		.sync			= FB_SYNC_EXT,
 		.vmode			= FB_VMODE_NONINTERLACED
+} }, {	
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_display,
+	.enable	= do_enable_mipi2hdmi,
+	.mode	= {
+		.name			= "HDMI_1920x1080",
+		.refresh		= 60,
+		.xres			= 1920,
+		.yres			= 1080,
+		.pixclock		= 6734, /* 148500000 */
+		.left_margin	= 148,
+		.right_margin	= 88,
+		.upper_margin	= 36,
+		.lower_margin	= 4,
+		.hsync_len		= 44,
+		.vsync_len		= 5,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} },  {	
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_display,
+	.enable	= do_enable_mipi2lvds,
+	.mode	= {
+		.name			= "LVDS_AM19201080D1",
+		.refresh		= 60,
+		.xres			= 1920,
+		.yres			= 1080,
+		.pixclock		= 6734, /* 148500000 */
+		.left_margin	= 148,
+		.right_margin	= 88,
+		.upper_margin	= 36,
+		.lower_margin	= 4,
+		.hsync_len		= 44,
+		.vsync_len		= 5,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+		
 } }, {
 	.detect = detect_display,
 	.enable	= do_display_default,
