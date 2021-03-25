@@ -587,6 +587,9 @@
 #define CONFIG_OF_SYSTEM_SETUP
 #define IS_TRIZEPS8_MINI
 
+/* Trizeps8Mini Custom Firmware Version Commands */
+#define CONFIG_CMD_FPGA_REV
+#define CONFIG_CMD_MCU_REV
 /*************************************************************************************************************/
 /* Modify config for Android                                                                                 */
 /*************************************************************************************************************/

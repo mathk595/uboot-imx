@@ -715,6 +715,11 @@ config CMD_FPGA
 	help
 	  FPGA support.
 
+config CMD_FPGA_REV
+	bool "check Lattice FPGA firmware revision on Trizeps8Mini"
+	help
+	  Checks the firmware version of the Lattice MachXO3 FPGA on the Trizeps8Mini
+
 config CMD_FPGA_LOADBP
 	bool "fpga loadbp - load partial bitstream (Xilinx only)"
 	depends on CMD_FPGA
@@ -868,6 +873,11 @@ config CMD_LOADS
 	default y
 	help
 	  Load an S-Record file over serial line
+
+config CMD_MCU_REV
+	bool "check kinetis mcu firmware version on Trizeps8Mini"
+	help
+	  Checks the firmware version of the Kinetis MCU on the Trizeps8Mini
 
 config CMD_MMC
 	bool "mmc"
