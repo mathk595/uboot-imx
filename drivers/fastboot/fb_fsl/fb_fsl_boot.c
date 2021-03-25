@@ -687,6 +687,10 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 		if (android_image_check_header(hdr)) {
 			printf("boota: bad boot image magic\n");
 			goto fail;
+		}else
+		{		    
+		        printf("boota: android_image_check_header @0x%lx [%s]OK!\n",
+			       (ulong)hdr, (char *)hdr);
 		}
 		if (avb_result == AVB_AB_FLOW_RESULT_OK)
 			printf(" verify OK, boot '%s%s'\n",
@@ -755,7 +759,11 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 		}
 #else /* CONFIG_ARCH_IMX8 || CONFIG_ARCH_IMX8M */
 		/* copy kernel image and boot header to hdr->kernel_addr - hdr->page_size */
-		memcpy((void *)(ulong)(hdr->kernel_addr - hdr->page_size), (void *)hdr,
+			printf("boota: Image_Arm64 memcpy 0x%lx 0x%lx 0x%ld\n" ,
+		      (long)hdr->kernel_addr,(ulong)(hdr->kernel_addr+hdr->page_size),(void *)hdr,
+		       (long)(hdr->page_size + ALIGN(hdr->kernel_size, hdr->page_size)));
+
+			memcpy((void *)(ulong)(hdr->kernel_addr - hdr->page_size), (void *)hdr,
 				hdr->page_size + ALIGN(hdr->kernel_size, hdr->page_size));
 #endif /* CONFIG_ARCH_IMX8 || CONFIG_ARCH_IMX8M */
 	} else {
@@ -781,12 +789,10 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 
 #ifdef CONFIG_OF_LIBFDT
 	/* load the dtb file */
-	u32 fdt_addr = 0;
 	u32 fdt_size = 0;
 	struct dt_table_header *dt_img = NULL;
 
 	if (is_load_fdt_from_part()) {
-		fdt_addr = (ulong)((ulong)(hdr->kernel_addr) + FDT_OFFSET_TO_KERNEL);
 #ifdef CONFIG_ANDROID_THINGS_SUPPORT
 		if (find_partition_data_by_name("oem_bootloader",
 					avb_out_data, &avb_loadpart)) {
@@ -826,25 +832,20 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 			printf("boota: no dt entries\n");
 			goto fail;
 		}
-
+		
 		struct dt_table_entry *dt_entry;
 		dt_entry = (struct dt_table_entry *)((ulong)dt_img +
 				be32_to_cpu(dt_img->dt_entries_offset));
 		fdt_size = be32_to_cpu(dt_entry->dt_size);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-		memcpy((void *)fdt_addr, (void *)((ulong)dt_img +
+		memcpy((void *)(ulong)hdr->second_addr, (void *)((ulong)dt_img +
 				be32_to_cpu(dt_entry->dt_offset)), fdt_size);
-#pragma GCC diagnostic pop
 	} else {
-		fdt_addr = (ulong)(hdr->second_addr);
-		fdt_size = (ulong)(hdr->second_size);
-		if (fdt_size && fdt_addr) {
-			memcpy((void *)(ulong)fdt_addr,
+		if (hdr->second_size && hdr->second_addr) {
+			memcpy((void *)(ulong)hdr->second_addr,
 				(void *)(ulong)hdr + hdr->page_size
 				+ ALIGN(hdr->kernel_size, hdr->page_size)
 				+ ALIGN(hdr->ramdisk_size, hdr->page_size),
-				fdt_size);
+				hdr->second_size);
 		}
 	}
 #endif /*CONFIG_OF_LIBFDT*/
@@ -931,10 +932,10 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 	printf("Ramdisk  @ %08x-%08x (%d)\n", hdr->ramdisk_addr, hdr->ramdisk_addr+ hdr->ramdisk_size, hdr->ramdisk_size);
 
 	char boot_addr_start[12];
-	char ramdisk_addr[25];
-	char fdt_addr_start[12];
-
-	char *boot_args[] = { NULL, boot_addr_start, ramdisk_addr, fdt_addr_start};
+	char fdt_addr[25];
+	char ramdisk_addr[12];
+	
+	char *boot_args[] = { NULL, boot_addr_start, ramdisk_addr, fdt_addr};
 	if (check_image_arm64)
 		boot_args[0] = "booti";
 	else
@@ -942,7 +943,7 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 
 	sprintf(boot_addr_start, "0x%lx", addr);
 	sprintf(ramdisk_addr, "0x%x:0x%x", hdr->ramdisk_addr, hdr->ramdisk_size);
-	sprintf(fdt_addr_start, "0x%x", hdr->second_addr);
+	sprintf(fdt_addr, "0x%x", hdr->second_addr);
 
 /* when CONFIG_SYSTEM_RAMDISK_SUPPORT is enabled and it's for Android Auto, if it's not recovery mode
  * do not pass ramdisk addr*/
@@ -1153,12 +1154,16 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	sprintf(fdt_addr, "0x%x", hdr->second_addr);
 	if (check_image_arm64) {
 		android_image_get_kernel(hdr, 0, NULL, NULL);
+		printf("do_boota: cmd:(%s) boot_addr:(%s) ramdisk:(%s) fdt:(%s)\n",
+		    	boot_args[0],boot_args[1],boot_args[2],boot_args[3]);
 #ifdef CONFIG_CMD_BOOTI
-		do_booti(NULL, 0, 4, boot_args);
+			   do_booti(NULL, 0, 4, boot_args);
 #else
 		debug("please enable CONFIG_CMD_BOOTI when kernel are Image");
 #endif
 	} else {
+				printf("do_boota: do_bootm cmd:(%s) boot_addr:(%s) ramdisk:(%s) fdt:(%s)\n",
+		       boot_args[0],boot_args[1],boot_args[2],boot_args[3]);
 		do_bootm(NULL, 0, 4, boot_args);
 	}
 	/* This only happens if image is somehow faulty so we start over */
