@@ -112,9 +112,6 @@ struct i2c_pads_info i2c_pad_info3 = {
 	},
 };
 
-#define USDHC2_CD_GPIO	IMX_GPIO_NR(2, 18)
-#define USDHC2_PWR_GPIO IMX_GPIO_NR(2, 19)
-
 #define USDHC_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE |PAD_CTL_PE | \
 			 PAD_CTL_FSEL2)
 #define USDHC_GPIO_PAD_CTRL (PAD_CTL_HYS | PAD_CTL_DSE1)
@@ -262,6 +259,9 @@ int power_init_board(void)
 	/* increase VDD_SOC to typical value 0.85v before first DRAM access */
 	pmic_reg_write(p, BD71837_BUCK1_VOLT_RUN, 0x0f);
 
+	/* /* increase VDD_ARM to typical value 1.0v to support up to 1.8Ghz*/
+	pmic_reg_write(p, BD71837_BUCK2_VOLT_RUN, 0x1E);
+
 #ifdef LP_RAM_SETTING
 	pmic_reg_write(p, BD71837_BUCK5_VOLT, 0x12);
 #else
@@ -383,8 +383,8 @@ void board_init_f(ulong dummy)
 
 	/* DDR initialization */
 	spl_dram_init();
-
-
+	
+	
 	max_freq = get_cpu_speed_grade_hz();
 	if(max_freq)
 	{
