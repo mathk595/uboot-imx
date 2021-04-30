@@ -59,8 +59,15 @@ void spl_dram_init(void)
 		switch( ramsize)
 		{
             case KUK_RAMSIZE_1GB:
+		if ( module == GUF_MODULE_TANARO)
+                {
                     printf("Choose dram_timing_v1r2_1GB_K4F8E3S4HD\r\n");			
 				    ddr_init(&dram_timing_v1r2_1GB_K4F8E3S4HD);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B                    
+                }else
+                {   // Need to check if K4F8E3S4HD from Tanaro may be used for Trizeps VIII Mini
+                    printf("Choose dram_timing_v1r2_1GB_K4F8E304HB\r\n");			
+				    ddr_init(&dram_timing_v1r2_1GB_K4F8E304HB);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+                }
                 break;
 			case KUK_RAMSIZE_2GB:
 				if ( ramskew == 0)
@@ -259,7 +266,7 @@ int power_init_board(void)
 	/* increase VDD_SOC to typical value 0.85v before first DRAM access */
 	pmic_reg_write(p, BD71837_BUCK1_VOLT_RUN, 0x0f);
 
-	/* /* increase VDD_ARM to typical value 1.0v to support up to 1.8Ghz*/
+	/* increase VDD_ARM to typical value 1.0v to support up to 1.8Ghz*/
 	pmic_reg_write(p, BD71837_BUCK2_VOLT_RUN, 0x1E);
 
 #ifdef LP_RAM_SETTING
@@ -384,7 +391,6 @@ void board_init_f(ulong dummy)
 	/* DDR initialization */
 	spl_dram_init();
 	
-	
 	max_freq = get_cpu_speed_grade_hz();
 	if(max_freq)
 	{
@@ -398,6 +404,5 @@ void board_init_f(ulong dummy)
 					CLK_ROOT_SOURCE_SEL(1) | \
 					CLK_ROOT_POST_DIV(CLK_ROOT_POST_DIV1));
 	}
-
 	board_init_r(NULL, 0);
 }
