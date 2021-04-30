@@ -171,7 +171,7 @@ source (ulong addr, const char *fit_uname)
 		return 1;
 	}
 
-	debug ("** Script length: %ld data 0x%x\n", len, data);
+	debug ("** Script length: %ld data 0x%x\n", len, (unsigned int)data);
 	return run_command_list((char *)data, len, 0);
 }
 

@@ -199,7 +199,7 @@ int ffu2blk(struct blk_desc *dev,
 
 	ffu2blk_progress_init(FFUStoreHeader.dwWriteDescriptorCount);
 
-	printf("buffer 0x%x \r\n", writebuf);
+	printf("buffer 0x%lx \r\n", (unsigned long) writebuf);
 	for(int i = 0; i < FFUStoreHeader.dwWriteDescriptorCount; i++)
 	{
 		CurrentBlock++;
