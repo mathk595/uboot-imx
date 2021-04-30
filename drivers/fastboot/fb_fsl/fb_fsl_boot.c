@@ -689,8 +689,8 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 			goto fail;
 		}else
 		{		    
-		        printf("boota: android_image_check_header @0x%lx [%s]OK!\n",
-			       (ulong)hdr, (char *)hdr);
+			printf("boota: android_image_check_header @0x%lx [%s]OK!\n",
+				(ulong)hdr, (char *)hdr);
 		}
 		if (avb_result == AVB_AB_FLOW_RESULT_OK)
 			printf(" verify OK, boot '%s%s'\n",
@@ -932,8 +932,8 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 	printf("Ramdisk  @ %08x-%08x (%d)\n", hdr->ramdisk_addr, hdr->ramdisk_addr+ hdr->ramdisk_size, hdr->ramdisk_size);
 
 	char boot_addr_start[12];
-	char fdt_addr[25];
-	char ramdisk_addr[12];
+	char fdt_addr[12];
+	char ramdisk_addr[25];
 	
 	char *boot_args[] = { NULL, boot_addr_start, ramdisk_addr, fdt_addr};
 	if (check_image_arm64)
