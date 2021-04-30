@@ -25,7 +25,12 @@
 #include <power/bd71837.h>
 #include "../common/tcpc.h"
 #include <usb.h>
-
+#if defined(ENABLE_I2C_TRIZEPS8MINI) && ENABLE_I2C_TRIZEPS8MINI
+#include <sec_mipi_dsim.h>
+#include <imx_mipi_dsi_bridge.h>
+#include <mipi_dsi_panel.h>
+#include <asm/mach-imx/video.h>
+#endif
 #include "../common/kuk_boards.h"
 
 #define TRIZEPS8_USE_RESET_OUT_AS_WATCHDOG_OUT	0	/* NXP i.MX8MQ EVK uses RESET_OUT as Watchdog Out */
@@ -40,7 +45,26 @@ DECLARE_GLOBAL_DATA_PTR;
 #define GPIO_PAD_PU_CTRL (PAD_CTL_DSE6 | PAD_CTL_PUE | PAD_CTL_PE)
 #define GPIO_PAD_PD_CTRL (PAD_CTL_DSE6 |               PAD_CTL_PE)
 
+#if defined(ENABLE_I2C_TRIZEPS8MINI) && ENABLE_I2C_TRIZEPS8MINI
+#ifdef CONFIG_SYS_I2C_MXC
 
+#define I2C_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE | PAD_CTL_PE)
+#define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
+
+struct i2c_pads_info i2c_pad_info1 = {
+	.scl = {
+		.i2c_mode = IMX8MM_PAD_I2C1_SCL_I2C1_SCL | PC,
+		.gpio_mode = IMX8MM_PAD_I2C1_SCL_GPIO5_IO14 | PC,
+		.gp = IMX_GPIO_NR(5, 14),
+	},
+	.sda = {
+		.i2c_mode = IMX8MM_PAD_I2C1_SDA_I2C1_SDA | PC,
+		.gpio_mode = IMX8MM_PAD_I2C1_SDA_GPIO5_IO15 | PC,
+		.gp = IMX_GPIO_NR(5, 15),
+	},
+};
+#endif
+#endif
 
 static iomux_v3_cfg_t const uart_pads[] = {
 	IMX8MM_PAD_UART1_RXD_UART1_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
@@ -83,6 +107,15 @@ static iomux_v3_cfg_t const usb_pads[] = {
 	IMX8MM_PAD_GPIO1_IO12_GPIO1_IO12 | MUX_PAD_CTRL(GPIO_PAD_CTRL),	
 };
 
+#if defined(ENABLE_I2C_TRIZEPS8MINI) && ENABLE_I2C_TRIZEPS8MINI
+#define CAMERA_PWDN IMX_GPIO_NR(1,3)
+#define CAMERA_nRST IMX_GPIO_NR(1,6)
+
+static iomux_v3_cfg_t const camera_pads[] = {
+        IMX8MM_PAD_GPIO1_IO03_GPIO1_IO3  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam Pwdn
+	IMX8MM_PAD_GPIO1_IO06_GPIO1_IO6  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam nRST
+};
+#endif
 
 #if TRIZEPS8_USE_RESET_OUT_AS_WATCHDOG_OUT
 static iomux_v3_cfg_t const wdog_pads[] = {
@@ -102,7 +135,11 @@ static iomux_v3_cfg_t const reset_out_pads_v1r2[] = { IMX8MM_PAD_NAND_DQS_GPIO3_
 #define GPIO4_PAD  *(unsigned int *)0x303303E0
 
 int iomux_sai1_txd5, iopad_sai1_txd5;
-
+#if defined(ENABLE_I2C_TRIZEPS8MINI) && ENABLE_I2C_TRIZEPS8MINI
+#ifdef CONFIG_VIDEO_MXS
+void   GetDisplayEnvironment(void);
+#endif
+#endif
 #if 0
 static void init_gpio4_17(int level)
 {
@@ -118,20 +155,10 @@ static void init_gpio4_17(int level)
 
 }
 #endif
-
-/* currently unused
-
-#define CAMERA_PWDN IMX_GPIO_NR(1,3)
-#define CAMERA_nRST IMX_GPIO_NR(1,6)
-
-static iomux_v3_cfg_t const camera_pads[] = {
-        IMX8MM_PAD_GPIO1_IO03_GPIO1_IO3  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam Pwdn
-	IMX8MM_PAD_GPIO1_IO06_GPIO1_IO6  | MUX_PAD_CTRL(GPIO_PAD_PU_CTRL),  // Pin 123 Cam nRST
-};
-
+#if defined(ENABLE_I2C_TRIZEPS8MINI) && ENABLE_I2C_TRIZEPS8MINI
 static void init_camera_ov5640(void)
 {
-    printf("Init Camera Pins SODIMM 123,125 as GPIO \n");  
+        printf("Init Camera Pins SODIMM 123,125 as GPIO \n");  
 	imx_iomux_v3_setup_multiple_pads(camera_pads, ARRAY_SIZE(camera_pads));
 	gpio_request(CAMERA_PWDN, "camera_pwdn");
 	gpio_direction_output(CAMERA_PWDN, 1);
@@ -146,7 +173,7 @@ static void init_camera_ov5640(void)
 	gpio_direction_output(CAMERA_nRST, 1);
 	
 }
-*/
+#endif
 
 int board_early_init_f(void)
 {
@@ -575,9 +602,14 @@ int board_init(void)
 		setup_fec();
 	}
 #endif
+#if defined(ENABLE_I2C_TRIZEPS8MINI) && ENABLE_I2C_TRIZEPS8MINI
+	init_camera_ov5640();	
+	setup_pcie(); /* environment not read here */
+#ifdef CONFIG_SYS_I2C_MXC
+	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);	
 	//init_camera_ov5640();	
-	//setup_pcie(); /* environment not read here */
-
+#endif
+#endif	
 	/* Enable Uart4/Uart2 pre-set in imx8mm_bl31_setup.c bl31_early_platform_setup2() */
 	setup_periph2mcu();
 	

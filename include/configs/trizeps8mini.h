@@ -27,6 +27,14 @@
 #define CONFIG_FSL_CAAM_KB             1
 */
 
+/* ENABLE_UNUSED_CLOCKS_IMX8MM:  Enables clocks which are not used by Bootloader:
+   make sure that it will be passed to arch/arm/mach-imx/imx8mm/clocks_imx8mm.c    */
+//      #define ENABLE_UNUSED_CLOCKS_IMX8MM    1  
+
+/* Init i2c (Camera) during U-Boot init:  Disabled because i2c commands might not work later */
+//      #define ENABLE_I2C_TRIZEPS8MINI        0
+
+
 #define CONF_SYS_BL_PART              0  // use user Partition 1=boot partition
 #define LOG_DDR4_TRAINING_LEVEL         0
 
