@@ -170,8 +170,7 @@ source (ulong addr, const char *fit_uname)
 		puts ("Wrong image format for \"source\" command\n");
 		return 1;
 	}
-
-	debug ("** Script length: %ld data 0x%x\n", len, (unsigned int)data);
+	debug ("** Script length: %ld data 0x%lx\n", len, (unsigned long) data);
 	return run_command_list((char *)data, len, 0);
 }
 
