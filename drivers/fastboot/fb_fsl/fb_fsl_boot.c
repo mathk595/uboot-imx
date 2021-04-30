@@ -778,13 +778,20 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 
 	flush_cache((ulong)load_addr, image_size);
 	check_image_arm64  = image_arm64((void *)(ulong)hdr->kernel_addr);
-#if !defined(CONFIG_SYSTEM_RAMDISK_SUPPORT) || !defined(CONFIG_ANDROID_AUTO_SUPPORT)
+#if !defined(CONFIG_SYSTEM_RAMDISK_SUPPORT) && !defined(CONFIG_ANDROID_AUTO_SUPPORT)
 	memcpy((void *)(ulong)hdr->ramdisk_addr, (void *)(ulong)hdr + hdr->page_size
 			+ ALIGN(hdr->kernel_size, hdr->page_size), hdr->ramdisk_size);
 #else
 	if (is_recovery_mode)
+	{
+	        printf("Recovery Mode:%d Ramdisk: Copy:0x%lx <- 0x%lx 0x%x", is_recovery_mode,
+		       (ulong)hdr->ramdisk_addr, (ulong)hdr + hdr->page_size + ALIGN(hdr->kernel_size, hdr->page_size),
+		       hdr->ramdisk_size);
+	    
 		memcpy((void *)(ulong)hdr->ramdisk_addr, (void *)(ulong)hdr + hdr->page_size
 				+ ALIGN(hdr->kernel_size, hdr->page_size), hdr->ramdisk_size);
+	}
+	
 #endif
 
 #ifdef CONFIG_OF_LIBFDT
@@ -947,8 +954,8 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]) {
 
 /* when CONFIG_SYSTEM_RAMDISK_SUPPORT is enabled and it's for Android Auto, if it's not recovery mode
  * do not pass ramdisk addr*/
-#if defined(CONFIG_SYSTEM_RAMDISK_SUPPORT) && defined(CONFIG_ANDROID_AUTO_SUPPORT)
-	if (!is_recovery_mode)
+#if defined(CONFIG_SYSTEM_RAMDISK_SUPPORT) || defined(CONFIG_ANDROID_AUTO_SUPPORT)
+	if (!is_recovery_mode)	  
 		boot_args[2] = NULL;
 #endif
 
@@ -1137,9 +1144,9 @@ int do_boota(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #endif /*CONFIG_OF_LIBFDT*/
 
 
-	char boot_addr_start[12];
-	char ramdisk_addr[25];
-	char fdt_addr[12];
+	char boot_addr_start[32];
+	char ramdisk_addr[32];
+	char fdt_addr[32];
 	char *boot_args[] = { NULL, boot_addr_start, ramdisk_addr, fdt_addr};
 	if (check_image_arm64 ) {
 		addr = hdr->kernel_addr;
