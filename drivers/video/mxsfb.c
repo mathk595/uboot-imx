@@ -206,7 +206,12 @@ void lcdif_power_down(void)
 			break;
 		udelay(1);
 	}
+#if !defined(CONFIG_IMX_PERSIST_INIT)
 	mxs_reset_block((struct mxs_register_32 *)&regs->hw_lcdif_ctrl_reg);
+#else
+	/* Stop! */
+	writel(LCDIF_CTRL_RUN, &regs->hw_lcdif_ctrl_clr);
+#endif
 }
 
 void *video_hw_init(void)

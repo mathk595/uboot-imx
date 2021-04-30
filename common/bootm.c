@@ -535,9 +535,11 @@ ulong bootm_disable_interrupts(void)
 	 * updated every 1 ms within the HCCA structure in SDRAM! For more
 	 * details see the OpenHCI specification.
 	 */
+	//moved to cmd
 	usb_stop();
 #endif
 #endif
+
 	return iflag;
 }
 

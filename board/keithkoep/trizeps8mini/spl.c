@@ -259,7 +259,7 @@ int power_init_board(void)
 	/* increase VDD_SOC to typical value 0.85v before first DRAM access */
 	pmic_reg_write(p, BD71837_BUCK1_VOLT_RUN, 0x0f);
 
-	/* /* increase VDD_ARM to typical value 1.0v to support up to 1.8Ghz*/
+	/* increase VDD_ARM to typical value 1.0v to support up to 1.8Ghz*/
 	pmic_reg_write(p, BD71837_BUCK2_VOLT_RUN, 0x1E);
 
 #ifdef LP_RAM_SETTING

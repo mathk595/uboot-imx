@@ -435,16 +435,20 @@ void do_enable_mipi2rgb(struct display_info_t const *dev)
 	gpio_direction_output(IMX_GPIO_NR(1, 5), 1);
 	
 	gpio_request(IMX_GPIO_NR(1, 1), "BACKLIGHT_PWM");
-	//gpio_direction_output(IMX_GPIO_NR(1, 1), 1);
-	gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
 	
 	gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT_EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 22), 1);
 
 	if(!(strncmp(dev->mode.name, "RGB18_ATM0700D6J", strlen(dev->mode.name))))
+	{
+		gpio_direction_output(IMX_GPIO_NR(1, 1), 0);
 		fpga_init(0x89);
+	}
 	else
+	{
+		gpio_direction_output(IMX_GPIO_NR(1, 1), 1);
 		fpga_init(0x8D);
+	}
 
 	/* enable the dispmix & mipi phy power domain */
 	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, DISPMIX, true, 0);
