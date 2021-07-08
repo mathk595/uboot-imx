@@ -10,9 +10,9 @@
 #define FUSE14_MODULE_TRIZEPS   0x1
 #define FUSE14_MODULE_MYON      0x2
 #define FUSE14_MODULE_SBCSOM    0x4
-#define FUSE14_MODULE_TRIZEPSr  0x5  // Fix if accidently burned to be Myon or SBCSOM
-#define FUSE14_MODULE_MYONr     0x6  // Fix if accidently burned to be Trizeps or SBCSOM
-#define FUSE14_MODULE_SBCSOMr   0x7  // Fix if accidently burned to be Myon or Trizeps
+#define FUSE14_MODULE_TRIZEPSr  (FUSE14_MODULE_MYON|FUSE14_MODULE_SBCSOM)     // 6 Fix if accidently burned to be Myon or SBCSOM
+#define FUSE14_MODULE_MYONr     (FUSE14_MODULE_TRIZEPS|FUSE14_MODULE_SBCSOM)  // 5 Fix if accidently burned to be Trizeps or SBCSOM
+#define FUSE14_MODULE_SBCSOMr   (FUSE14_MODULE_TRIZEPS|FUSE14_MODULE_MYON)    // 3 Fix if accidently burned to be Myon or Trizeps
 #define FUSE14_USE_OTHER_FUSE   0xF  // Fuse Invalid, Use other Fuse.
 
 #define FUSE14_RAM(x)           ((x & 0x0F000000)>>24)   
@@ -82,7 +82,7 @@ int kuk_GetOTP( int key, int defaultval)
 
     fuse14 = bank14->fuse_regs[0];
     if ( FUSE14_MODULE(fuse14) == FUSE14_USE_OTHER_FUSE)
-        fuse14 = bank14->fuse_regs[4];
+        fuse14 = bank14->fuse_regs[3];
     switch( FUSE14_MODULE(fuse14))
     {
         case FUSE14_MODULE_TRIZEPS:
