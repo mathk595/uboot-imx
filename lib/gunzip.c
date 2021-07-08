@@ -13,6 +13,7 @@
 #include <memalign.h>
 #include <u-boot/zlib.h>
 #include <div64.h>
+#include <linux/err.h>
 
 #include "fs.h"
 
@@ -94,7 +95,7 @@ void gzwrite_progress(int iteration,
 		     u64 total_bytes)
 {
 	if (0 == (iteration & 7))
-		printf("%llu%% %llu/%llu\r", (100 * bytes_written / total_bytes) , bytes_written, total_bytes);
+		printf("%3llu%% %llu/%llu\r", (100 * bytes_written / total_bytes) , bytes_written, total_bytes);
 }
 
 __weak
@@ -104,7 +105,7 @@ void gzwrite_progress_finish(int returnval,
 			     u32 expected_crc,
 			     u32 calculated_crc)
 {
-	printf("%llu%% %llu/%llu\r", (100 * bytes_written / total_bytes) , bytes_written, total_bytes);
+	printf("%3llu%% %llu/%llu\r", (100 * bytes_written / total_bytes) , bytes_written, total_bytes);
 
 	if (0 == returnval) {
 		printf("\n\t%llu bytes, crc 0x%08x\n",
@@ -138,8 +139,8 @@ int gzwritefile(struct blk_desc *dev,
 	unsigned char *writebuf = NULL;
 	unsigned char *src = NULL;
 	u64 szexpected = 0;
+	s64 MemBiggerThanImage=0;
 	unsigned long BUFFERSIZE;
-
 	unsigned long time;
 
 	BUFFERSIZE = szwritebuf << 3;
@@ -179,7 +180,7 @@ int gzwritefile(struct blk_desc *dev,
 
 	if(src[0] == 0x50 && src[1] == 0x4B && src[2] == 0x03 && src[3] == 0x04)
 	{
-//		printf (".imz/.zip file \n\r") ;
+		printf (".imz/.zip file \n\r") ;
 
 		/* skip header */
 		i = 30;
@@ -223,7 +224,7 @@ int gzwritefile(struct blk_desc *dev,
 	}
 	else
 	{
-//		printf (".gz file \n\r") ;
+		printf (".gz file \n\r") ;
 
 		/* skip header */
 		i = 10;
@@ -265,18 +266,27 @@ int gzwritefile(struct blk_desc *dev,
 	printf("CRC: 0x%x \r\n", expected_crc);
 	printf("Uncompressed size: %llu \r\n", szexpected);
 	printf("File size: %llu \r\n", payload_size);
+	printf("Target media size: %llu \r\n", (u64)dev->blksz*dev->lba);
 
 	printf("\r\n");
 
+	MemBiggerThanImage = (dev->blksz*dev->lba) - szexpected;
+	printf("Media is %lld bytes bigger than image \r\n",MemBiggerThanImage);
+
 	if(!force)
 	{
+		//MemBiggerThanImage = (dev->blksz*dev->lba) - szexpected;
 		if (lldiv(szexpected, dev->blksz) > (dev->lba - outblock)) {
 			printf("%s: uncompressed size %llu exceeds device size %llu\n",
 				__func__, szexpected, (u64)dev->blksz*dev->lba);
 			return -1;
 		}
+	}/*
+	else
+	{
+		MemBiggerThanImage = (dev->blksz*dev->lba) - szexpected;	  
 	}
-
+	 */
 	res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
 	res = fs_read(filename, (ulong)src, 0, BUFFERSIZE , &actread);
 
@@ -362,6 +372,12 @@ int gzwritefile(struct blk_desc *dev,
 			
 			blocks_written = blk_dwrite(dev, outblock,
 						    writeblocks, writebuf);
+			if(IS_ERR_VALUE(blocks_written))
+			{
+				printf("Write error on target device\n");
+				r=-1;
+				goto out; // ugly
+			}
 			outblock += blocks_written;
 
 			if (ctrlc()) {
@@ -387,6 +403,22 @@ out:
 
 	time = get_timer(time);
 	printf("%s restored in %lu ms \r\n", filename, time);
+
+	printf("%"LBAFlength"u of %"LBAFlength"u blocks written \r\n",
+		   outblock, dev->lba);
+
+	if( force && (MemBiggerThanImage != 0) )
+	{
+		if( MemBiggerThanImage > 0 )
+		{	      
+			printf("Image %lld kB Smaller than Storage device \r\n", MemBiggerThanImage>>10);
+			restore_backup_gpt(dev);	    	    
+		}else
+		{
+			printf("Storage %lld kB Smaller than Image device \r\n", (-MemBiggerThanImage)>>10);
+			restore_backup_gpt(dev);
+		}
+	}	
 
 	return r;
 }
@@ -584,4 +616,148 @@ int zunzip(void *dst, int dstlen, unsigned char *src, unsigned long *lenp,
 	inflateEnd(&s);
 
 	return err;
+}
+
+
+typedef struct
+{
+	// from wikipedia
+	//uint8_t signature[8];
+	const char signature[8];
+	uint8_t revision[4];
+	uint32_t header_size, header_crc, reserved;
+	uint64_t my_lba, other_lba, first_lba, last_lba;
+	uint8_t guid[16];
+	uint64_t part_tab_lba;
+	uint32_t part_tab_count, part_entry_size, part_tab_crc;
+	//uint8_t reserved2[420];
+} gpt_header_t;
+
+#define GPT_HEAD_BLOCK 1
+#define BLOCK_COUNT 1
+//#define PART_ENTRY_START 2
+#define PART_BLOCKS_MAX 33
+
+/**
+ * restore the backup gpt after an image has been written
+ * that does not exactly fit the target device
+ */
+int restore_backup_gpt(struct blk_desc *dev)
+{
+	int error=0;
+	void *buffer;
+	unsigned long count;
+	gpt_header_t *header;
+	uint64_t part_tab1_lba;
+	uint64_t part_tab2_lba;
+	uint64_t part_tab_blocks;
+	lbaint_t block_no;
+
+	printf("device number:\t\t%d\n",dev->devnum);
+	printf("number of blocks:\t%"LBAFlength"d\n",dev->lba);
+	printf("block size:\t\t%ld\n",dev->blksz);
+
+	buffer=malloc(dev->blksz); // there are several mallocs
+	if(!buffer)
+		return -ENOMEM;
+
+	// read primary gpt
+	printf("read primary GPT header from block %d\n",GPT_HEAD_BLOCK);
+	count=blk_dread(dev, GPT_HEAD_BLOCK, BLOCK_COUNT, buffer);
+	if(!IS_ERR_VALUE(count))
+	{
+		uint32_t crc;
+
+		header=(gpt_header_t *)buffer;
+		if(!strncmp(header->signature,"EFI PART",sizeof(header->signature)))
+		{
+			printf("header size: %d\n",header->header_size);
+			printf("header crc: 0x%08x\n",header->header_crc);
+			printf("primary GPT header on block %lld\n",header->my_lba);
+			printf("secondary GPT header on block %lld\n",header->other_lba);
+			printf("%d partitions on media\n",header->part_tab_count);
+
+			// read start and size of the partition table
+			part_tab1_lba=le64_to_cpu(header->part_tab_lba);
+			count=le32_to_cpu(header->part_tab_count)*
+				le32_to_cpu(header->part_entry_size);
+			part_tab_blocks=count/dev->blksz;
+			if(count%dev->blksz)
+				part_tab_blocks++;
+			// adjust the position of the secondary gpt
+			header->other_lba=cpu_to_le64(dev->lba-GPT_HEAD_BLOCK);
+			printf("secondary GPT header will be on block %lld\n",
+				   header->other_lba);
+
+			// update checksum
+			header->header_crc=0;
+			crc=crc32(0, (const unsigned char *)header,
+					  le32_to_cpu(header->header_size));
+			printf("new crc: 0x%08x\n",crc);
+			header->header_crc=cpu_to_le32(crc);
+			// write back
+			printf("write primary GPT header to block %lld\n",
+				   (uint64_t)GPT_HEAD_BLOCK);
+			count=blk_dwrite(dev, GPT_HEAD_BLOCK, BLOCK_COUNT, buffer);
+			if(!IS_ERR_VALUE(count))
+			{
+				// adjust positions of gpt and partition table
+				header->my_lba=cpu_to_le64(dev->lba-GPT_HEAD_BLOCK);
+				header->other_lba=cpu_to_le64(GPT_HEAD_BLOCK);
+				part_tab2_lba=dev->lba-PART_BLOCKS_MAX;
+				header->part_tab_lba=cpu_to_le64(part_tab2_lba);
+				// update checksum
+				header->header_crc=0;
+				crc=crc32(0, (const unsigned char *)header,
+						  le32_to_cpu(header->header_size));
+				printf("new crc: 0x%08x\n",crc);
+				header->header_crc=cpu_to_le32(crc);
+				// write back
+				printf("write secondary GPT header to block %lld\n",
+					   header->my_lba);
+				count=blk_dwrite(dev, header->my_lba, BLOCK_COUNT, buffer);
+				if(IS_ERR_VALUE(count))
+				{
+					printf("Failed to write secundary GPT header\n");
+					error=-count;
+				}
+			}
+			else
+			{
+				printf("Failed to write primary GPT header\n");
+				error=-count;
+			}
+		}
+		else
+		{
+			printf("No GUID partion table\n");
+			error=-EINVAL;
+		}
+	}
+	else
+	{
+		printf("Failed to read primary GPT header\n");
+		error=-count;
+	}
+
+	// copy the partition table
+	if(!error)
+		printf("copy partition table from %lld to %lld\n"
+			   ,part_tab1_lba,part_tab2_lba);
+	for(block_no=0; !error && block_no < part_tab_blocks; block_no++)
+	{
+		count=blk_dread(dev, part_tab1_lba+block_no,
+						BLOCK_COUNT, buffer);
+		if(!IS_ERR_VALUE(count))
+			count=blk_dwrite(dev, part_tab2_lba+block_no,
+							 BLOCK_COUNT, buffer);
+		if(IS_ERR_VALUE(count))
+		{
+			printf("Failed to copy partition table\n");
+			error=-count;
+		}
+	}
+	
+	free(buffer);
+	return error;
 }
