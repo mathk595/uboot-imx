@@ -65,6 +65,14 @@ config TRIZEPS8MINI
        bool "Select TRIZEPS8MINI, if no rev is set, OTP will select targetboard info"
        default n
 
+config TRIZEPS8NANO
+       bool "Select TRIZEPS8NANO, if no rev is set, OTP will select targetboard info"
+       default n
+
+config TRIZEPS8NANO_V1R2_1GB
+       bool "Select V1R2 TRIZEPS8NANO with 1GB RAM and override possibly set OTP fuses"
+       default n
+
 config MYON2_V1R1_1GB
        bool "Select V1R1 MYON2 with 1GB RAM and override possibly set OTP fuses"
        default n

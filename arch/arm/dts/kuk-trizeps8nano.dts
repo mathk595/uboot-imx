@@ -107,10 +107,10 @@
 			>;
 		};
 
-		pinctrl_uart2: uart1grp {
+		pinctrl_uart1: uart1grp {
 			fsl,pins = <
-				MX8MN_IOMUXC_UART2_RXD__UART2_DCE_RX	0x49
-				MX8MN_IOMUXC_UART2_TXD__UART2_DCE_TX	0x49
+				MX8MN_IOMUXC_UART1_RXD__UART1_DCE_RX	0x49
+				MX8MN_IOMUXC_UART1_TXD__UART1_DCE_TX	0x49
 			>;
 		};
 
@@ -441,9 +441,9 @@
 	};
 };
 
-&uart2 { /* console */
+&uart1 { /* console */
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart2>;
+	pinctrl-0 = <&pinctrl_uart1>;
 	status = "okay";
 };
 
@@ -484,11 +484,9 @@
 };
 
 &usbotg1 {
-	dr_mode = "otg";
 	status = "okay";
 };
 
 &usbotg2 {
-	dr_mode = "host";
 	status = "okay";
 };

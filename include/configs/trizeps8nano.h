@@ -30,7 +30,7 @@
 #define CONF_SYS_BL_PART              0  // use user Partition 1=boot partition
 #define LOG_DDR4_TRAINING_LEVEL         0
 
-#define CONFIG_SPL_MAX_SIZE		(148 * 1024)
+#define CONFIG_SPL_MAX_SIZE		(208 * 1024)
 #define CONFIG_SYS_MONITOR_LEN		(512 * 1024)
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	0x300
@@ -44,18 +44,18 @@
 #define CONFIG_SPL_DRIVERS_MISC_SUPPORT
 #define CONFIG_SPL_I2C_SUPPORT
 #define CONFIG_SPL_LDSCRIPT		"arch/arm/cpu/armv8/u-boot-spl.lds"
-#define CONFIG_SPL_STACK		0x91fff0
+#define CONFIG_SPL_STACK		0x187FF0
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
-#define CONFIG_SPL_BSS_START_ADDR      0x00910000
+#define CONFIG_SPL_BSS_START_ADDR      0x0095e000
 #define CONFIG_SPL_BSS_MAX_SIZE        0x2000	/* 8 KB */
 #define CONFIG_SYS_SPL_MALLOC_START    0x42200000
-#define CONFIG_SYS_SPL_MALLOC_SIZE     0x80000	/* 512 KB */
+#define CONFIG_SYS_SPL_MALLOC_SIZE     0x10000	/* 64 KB */
 #define CONFIG_SYS_ICACHE_OFF
 #define CONFIG_SYS_DCACHE_OFF
 
-#define CONFIG_MALLOC_F_ADDR		0x912000 /* malloc f used before GD_FLG_FULL_MALLOC_INIT set */
+#define CONFIG_MALLOC_F_ADDR		0x184000 /* malloc f used before GD_FLG_FULL_MALLOC_INIT set */
 
 #define CONFIG_SPL_ABORT_ON_RAW_IMAGE /* For RAW image gives a error info not panic */
 
@@ -98,7 +98,7 @@
 #define CONFIG_BOARD_LATE_INIT
 
 /* Flat Device Tree Definitions */
-#define CONFIG_OF_BOARD_SETUP
+// #define CONFIG_OF_BOARD_SETUP
 
 #undef CONFIG_CMD_EXPORTENV
 #undef CONFIG_CMD_IMPORTENV
@@ -124,10 +124,7 @@
 #define CONFIG_PHY_GIGE
 #define IMX_FEC_BASE			0x30BE0000
 
-/*
- #define CONFIG_PHYLIB
- #define CONFIG_PHY_ATHEROS
-*/
+
 #endif
 
 
@@ -422,6 +419,7 @@
 #define CONFIG_ENV_OVERWRITE
 #if defined(CONFIG_ENV_IS_IN_MMC)
 #define CONFIG_ENV_OFFSET               (64 * SZ_64K)
+#define CONFIG_ENV_SECT_SIZE		(64 * 1024)
 #elif defined(CONFIG_ENV_IS_IN_SPI_FLASH)
 #define CONFIG_ENV_OFFSET		(4 * 1024 * 1024)
 #define CONFIG_ENV_SECT_SIZE		(64 * 1024)
@@ -542,6 +540,7 @@
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE
+#define CONFIG_USBD_HS
 
 #define CONFIG_CMD_USB_MASS_STORAGE
 #define CONFIG_USB_GADGET_MASS_STORAGE
@@ -549,9 +548,6 @@
 
 #endif
 
-#define CONFIG_CI_UDC
-#define CONFIG_USB_GADGET_DUALSPEED
-#define CONFIG_USBD_HS
 #define CONFIG_USB_GADGET_VBUS_DRAW 2
 #define CONFIG_USB_MAX_CONTROLLER_COUNT         2
 
@@ -577,78 +573,7 @@
 /* Modify config for Android                                                                                 */
 /*************************************************************************************************************/
 #if defined(CONFIG_ANDROID_SUPPORT)
-#define IMX8MM_EVK_ANDROID_H
-
-#define CONFIG_BCB_SUPPORT
-
-/*#define CONFIG_FASTBOOT*/
-#define CONFIG_ANDROID_AB_SUPPORT
-#define CONFIG_AVB_SUPPORT
-#define CONFIG_SUPPORT_EMMC_RPMB
-#define CONFIG_SYSTEM_RAMDISK_SUPPORT
-#define CONFIG_AVB_FUSE_BANK_SIZEW 0
-#define CONFIG_AVB_FUSE_BANK_START 0
-#define CONFIG_AVB_FUSE_BANK_END 0
-#define CONFIG_FASTBOOT_LOCK
-#define FSL_FASTBOOT_FB_DEV "mmc"
-
-#ifdef CONFIG_SYS_MALLOC_LEN
-#undef CONFIG_SYS_MALLOC_LEN
-#define CONFIG_SYS_MALLOC_LEN           (96 * SZ_1M)
+#include "imx8mn_evk_android.h"
 #endif
 
-#ifndef CONFIG_USB_FUNCTION_FASTBOOT
-#define CONFIG_USB_FUNCTION_FASTBOOT
-#endif
-
-#ifndef CONFIG_CMD_FASTBOOT
-#define CONFIG_CMD_FASTBOOT
-#endif
-
-#ifndef CONFIG_ANDROID_BOOT_IMAGE
-#define CONFIG_ANDROID_BOOT_IMAGE
-#endif
-
-#ifndef CONFIG_FASTBOOT_FLASH
-#define CONFIG_FASTBOOT_FLASH
-#endif
-
-#ifndef CONFIG_FSL_FASTBOOT
-#define CONFIG_FSL_FASTBOOT
-#endif
-
-#define CONFIG_ANDROID_RECOVERY
-
-#define CONFIG_CMD_BOOTA
-#ifndef CONFIG_SUPPORT_RAW_INITRD
-#define CONFIG_SUPPORT_RAW_INITRD
-#endif
-#define CONFIG_SERIAL_TAG
-
-
-/* Enable mcu firmware flash */
-#ifdef CONFIG_FLASH_MCUFIRMWARE_SUPPORT
-#define ANDROID_MCU_FRIMWARE_DEV_TYPE DEV_MMC
-#define ANDROID_MCU_FIRMWARE_START 0x500000
-#define ANDROID_MCU_FIRMWARE_SIZE  0x40000
-#define ANDROID_MCU_FIRMWARE_HEADER_STACK 0x20020000
-#endif
-
-#ifdef CONFIG_FSL_CAAM_KB
-#undef CONFIG_FSL_CAAM_KB
-#endif
-#define AVB_AB_I_UNDERSTAND_LIBAVB_AB_IS_DEPRECATED
-
-#ifdef CONFIG_IMX_TRUSTY_OS
-#define AVB_RPMB
-#define KEYSLOT_HWPARTITION_ID 2
-#define KEYSLOT_BLKS             0x1FFF
-#define NS_ARCH_ARM64 1
-
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_BLK
-#endif
-#endif
-
-#endif
 #endif
