@@ -70,7 +70,8 @@ static int do_gzwritefile(cmd_tbl_t *cmdtp, int flag, int argc, char * const arg
 U_BOOT_CMD(
 	gzwritefile, 8, 0, do_gzwritefile,
 	"unzip and write file to block device",
-	"<interface> <dev> <interface> <dev> <filename>\n"
+	//"<interface> <dev> <interface> <dev> <filename>\n"
+	"<dst interface> <dst dev> <src interface> <src dev> <filename>\n"
 );
 
 static int do_gzwrite(cmd_tbl_t *cmdtp, int flag,
@@ -118,4 +119,22 @@ U_BOOT_CMD(
 	"\toutsize is the size of the expected output (hex bytes)\n"
 	"\t\tand is required for files with uncompressed lengths\n"
 	"\t\t4 GiB or larger\n"
+);
+
+static int do_restore_gpt(cmd_tbl_t *cmdtp, int flag,
+						  int argc, char * const *argv)
+{
+	struct blk_desc *bdev;
+
+	if(argc != 3)
+		return CMD_RET_USAGE;
+	if(blk_get_device_by_str(argv[1], argv[2], &bdev) < 0)
+		return CMD_RET_FAILURE;
+	return restore_backup_gpt(bdev) ? CMD_RET_FAILURE : CMD_RET_SUCCESS;
+}
+
+U_BOOT_CMD(
+	restore_gpt, 3, 0, do_restore_gpt,
+	"restore backup gpt after writing an image file",
+	"<interface> <device number>\n"
 );

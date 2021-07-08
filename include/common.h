@@ -482,7 +482,13 @@ int gzwrite(unsigned char *src, int len,
 /**
  * decompress and write gzipped image from file to block device
  *
- * @param	dev		block device descriptor
+ * @param	dev		block device descriptor of the target device
+ * @param	device	interface of the source device
+ * @param	part	source device number
+ * @param	filename	filename of the image
+ * @param	szwritebuf	bytes per write
+ * @param	force	write image even if it is larger
+ *				than the target device
  */
 int gzwritefile(struct blk_desc *dev,
 		const char *device,
@@ -490,6 +496,15 @@ int gzwritefile(struct blk_desc *dev,
 		const char *filename,
 		unsigned long szwritebuf,
 		int force);		
+
+/**
+ * restore the backup gpt after an image has been written
+ * that does not exactly fit the target device
+ *
+ * @param	dev		block device descriptor
+ */
+int restore_backup_gpt(struct blk_desc *dev);
+
 
 /* lib/lz4_wrapper.c */
 int ulz4fn(const void *src, size_t srcn, void *dst, size_t *dstn);
