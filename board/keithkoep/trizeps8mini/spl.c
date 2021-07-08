@@ -65,8 +65,8 @@ void spl_dram_init(void)
 				    ddr_init(&dram_timing_v1r2_1GB_K4F8E3S4HD);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B                    
                 }else
                 {   // Need to check if K4F8E3S4HD from Tanaro may be used for Trizeps VIII Mini
-                    printf("Choose dram_timing_v1r2_1GB_K4F8E304HB\r\n");			
-				    ddr_init(&dram_timing_v1r2_1GB_K4F8E304HB);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+                    printf("Choose dram_timing_v1r2_1GB_K4F8E3S4HB\r\n");			
+				    ddr_init(&dram_timing_v1r2_1GB_K4F8E3S4HD);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
                 }
                 break;
 			case KUK_RAMSIZE_2GB:
