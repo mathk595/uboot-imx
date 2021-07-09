@@ -180,7 +180,7 @@ int gzwritefile(struct blk_desc *dev,
 
 	if(src[0] == 0x50 && src[1] == 0x4B && src[2] == 0x03 && src[3] == 0x04)
 	{
-		printf (".imz/.zip file \n\r") ;
+		//printf (".imz/.zip file \n\r") ;
 
 		/* skip header */
 		i = 30;
@@ -224,7 +224,7 @@ int gzwritefile(struct blk_desc *dev,
 	}
 	else
 	{
-		printf (".gz file \n\r") ;
+		//printf (".gz file \n\r") ;
 
 		/* skip header */
 		i = 10;
@@ -271,22 +271,19 @@ int gzwritefile(struct blk_desc *dev,
 	printf("\r\n");
 
 	MemBiggerThanImage = (dev->blksz*dev->lba) - szexpected;
-	printf("Media is %lld bytes bigger than image \r\n",MemBiggerThanImage);
+	printf("Media is %lld kb %s than image \r\n",
+		   MemBiggerThanImage > 0 ? MemBiggerThanImage>>10 : (-MemBiggerThanImage)>>10,
+		   MemBiggerThanImage > 0 ? "bigger" : "smaller");
 
 	if(!force)
 	{
-		//MemBiggerThanImage = (dev->blksz*dev->lba) - szexpected;
 		if (lldiv(szexpected, dev->blksz) > (dev->lba - outblock)) {
 			printf("%s: uncompressed size %llu exceeds device size %llu\n",
 				__func__, szexpected, (u64)dev->blksz*dev->lba);
 			return -1;
 		}
-	}/*
-	else
-	{
-		MemBiggerThanImage = (dev->blksz*dev->lba) - szexpected;	  
 	}
-	 */
+
 	res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
 	res = fs_read(filename, (ulong)src, 0, BUFFERSIZE , &actread);
 
@@ -372,10 +369,18 @@ int gzwritefile(struct blk_desc *dev,
 			
 			blocks_written = blk_dwrite(dev, outblock,
 						    writeblocks, writebuf);
-			if(IS_ERR_VALUE(blocks_written))
+			if(blocks_written != writeblocks)
 			{
-				printf("Write error on target device\n");
-				r=-1;
+				if(IS_ERR_VALUE(blocks_written))
+				{
+					printf("Write error on target device\n");
+					r=-1;
+				}
+				else
+				{
+					printf("Target media full\n");
+					r=0;
+				}
 				goto out; // ugly
 			}
 			outblock += blocks_written;
@@ -677,8 +682,9 @@ int restore_backup_gpt(struct blk_desc *dev)
 			printf("secondary GPT header on block %lld\n",header->other_lba);
 			printf("%d partitions on media\n",header->part_tab_count);
 
-			// read start and size of the partition table
+			// read start and size of the partition tables
 			part_tab1_lba=le64_to_cpu(header->part_tab_lba);
+			part_tab2_lba=dev->lba-PART_BLOCKS_MAX;
 			count=le32_to_cpu(header->part_tab_count)*
 				le32_to_cpu(header->part_entry_size);
 			part_tab_blocks=count/dev->blksz;
@@ -688,7 +694,9 @@ int restore_backup_gpt(struct blk_desc *dev)
 			header->other_lba=cpu_to_le64(dev->lba-GPT_HEAD_BLOCK);
 			printf("secondary GPT header will be on block %lld\n",
 				   header->other_lba);
-
+			// ... and last usable LBA
+			printf("Last usable LBA will be %lld\n",part_tab2_lba-1);
+			header->last_lba=cpu_to_le64(part_tab2_lba-1);
 			// update checksum
 			header->header_crc=0;
 			crc=crc32(0, (const unsigned char *)header,
@@ -701,10 +709,10 @@ int restore_backup_gpt(struct blk_desc *dev)
 			count=blk_dwrite(dev, GPT_HEAD_BLOCK, BLOCK_COUNT, buffer);
 			if(!IS_ERR_VALUE(count))
 			{
-				// adjust positions of gpt and partition table
+				// adjust positions of gpt
 				header->my_lba=cpu_to_le64(dev->lba-GPT_HEAD_BLOCK);
 				header->other_lba=cpu_to_le64(GPT_HEAD_BLOCK);
-				part_tab2_lba=dev->lba-PART_BLOCKS_MAX;
+				//part_tab2_lba=dev->lba-PART_BLOCKS_MAX;
 				header->part_tab_lba=cpu_to_le64(part_tab2_lba);
 				// update checksum
 				header->header_crc=0;
