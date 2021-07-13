@@ -117,4 +117,7 @@ else
 obj-y += vsprintf.o strto.o strmhz.o
 endif
 
+# TODO: make configureable
+obj-$(CONFIG_MBRCMD) += mbrcmd.o
+
 subdir-ccflags-$(CONFIG_CC_OPTIMIZE_LIBS_FOR_SPEED) += -O2

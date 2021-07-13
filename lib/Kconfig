@@ -412,6 +412,15 @@ config FDT_FIXUP_PARTITIONS
 	  using partition info defined in the 'mtdparts' environment
 	  variable.
 
+config MBRCMD
+	bool "Enable commands in Master Boot Record"
+	depends on MMC
+	depends on ARM
+	depends on PARTITION_TYPE_GUID
+	help
+	  Allow to store commands in the Master Boot Records
+	  that will be executed at boot time
+
 menu "System tables"
 	depends on (!EFI && !SYS_COREBOOT) || (ARM && EFI_LOADER)
 

@@ -51,7 +51,9 @@
 #ifdef CONFIG_FSL_FASTBOOT
 #include <fb_fsl.h>
 #endif
-
+#ifdef CONFIG_MBRCMD
+#include <mbrcmd.h>
+#endif
 DECLARE_GLOBAL_DATA_PTR;
 
 ulong monitor_flash_len;
@@ -827,6 +829,9 @@ static init_fnc_t init_sequence_r[] = {
 	/* PPC has a udelay(20) here dating from 2002. Why? */
 #ifdef CONFIG_CMD_NET
 	initr_ethaddr,
+#endif
+#ifdef CONFIG_MBRCMD
+	run_mbr_cmd,
 #endif
 #ifdef CONFIG_BOARD_LATE_INIT
 	board_late_init,
