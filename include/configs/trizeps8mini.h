@@ -347,8 +347,9 @@
 	"loadupdatescriptfatusb=if test -n ${updateusb} = 1; then if usb start; then fatload usb 0 ${script_addr} autoboot.bat; fi; fi;\0 "            \
 	"loadupdatescriptfatsd=if test -n ${updatesd1} = 1; then fatload mmc 1 ${script_addr} autoboot.bat; fi;\0"            \
 	"update_bl=mmc partconf 0 0 0 0 ; ums 0 mmc 0 \0"	                                    \
-    "serial_download=i2c dev 2; i2c mw 0x10 2.1 2 \0"                                           \
-    "serial_download2=mw 0x30390098 0x40000000; reset \0"                                           \
+	"export_image=mbr_cmd add restore_gpt ; ums 0 mmc 0 \0"	                                    \
+        "serial_download=i2c dev 2; i2c mw 0x10 2.1 2 \0"                                           \
+        "serial_download2=mw 0x30390098 0x40000000; reset \0"                                       \
 	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 "                   \
 	"loadbootscriptext4=ext4load mmc ${mmcdev}:${mmcpartext4} ${script_addr} ${script};\0"      \
 	"loadbootscriptfat=fatload mmc ${mmcdev}:${mmcpart} ${script_addr} ${script};\0"            \
