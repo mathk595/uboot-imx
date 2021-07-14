@@ -23,7 +23,11 @@ int run_mbr_cmd(void)
 
 	//if(blk_first_device(IF_TYPE_MMC,&dev))
 	//dev=blk_get_dev("mmc",0);
+#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_ENV_SUPPORT)
 	dev=blk_get_dev(MBR_IF, MBR_DEV);
+#else
+	dev=blk_get_dev(MBR_IF, mmc_get_env_dev());
+#endif
 	if(!dev)
 	{
 		printf("No device\n");
@@ -101,7 +105,11 @@ static int do_mbr_cmd(cmd_tbl_t *cmdtp, int flag,
 
 	flags=(1 << cmd);
 
+#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_ENV_SUPPORT)
 	dev=blk_get_dev(MBR_IF, MBR_DEV);
+#else
+	dev=blk_get_dev(MBR_IF, mmc_get_env_dev());
+#endif
 	if(!dev)
 	{
 		printf("Failed to open device\n");
