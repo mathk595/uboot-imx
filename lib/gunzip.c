@@ -14,6 +14,7 @@
 #include <u-boot/zlib.h>
 #include <div64.h>
 #include <linux/err.h>
+#include <part_efi.h>
 
 #include "fs.h"
 
@@ -624,20 +625,6 @@ int zunzip(void *dst, int dstlen, unsigned char *src, unsigned long *lenp,
 }
 
 
-typedef struct
-{
-	// from wikipedia
-	//uint8_t signature[8];
-	const char signature[8];
-	uint8_t revision[4];
-	uint32_t header_size, header_crc, reserved;
-	uint64_t my_lba, other_lba, first_lba, last_lba;
-	uint8_t guid[16];
-	uint64_t part_tab_lba;
-	uint32_t part_tab_count, part_entry_size, part_tab_crc;
-	//uint8_t reserved2[420];
-} gpt_header_t;
-
 #define GPT_HEAD_BLOCK 1
 #define BLOCK_COUNT 1
 //#define PART_ENTRY_START 2
@@ -652,7 +639,7 @@ int restore_backup_gpt(struct blk_desc *dev)
 	int error=0;
 	void *buffer;
 	unsigned long count;
-	gpt_header_t *header;
+	gpt_header *header;
 	uint64_t part_tab1_lba;
 	uint64_t part_tab2_lba;
 	uint64_t part_tab_blocks;
@@ -673,36 +660,36 @@ int restore_backup_gpt(struct blk_desc *dev)
 	{
 		uint32_t crc;
 
-		header=(gpt_header_t *)buffer;
-		if(!strncmp(header->signature,"EFI PART",sizeof(header->signature)))
+		header=(gpt_header *)buffer;
+		if(header->signature==GPT_HEADER_SIGNATURE_UBOOT)
 		{
 			printf("header size: %d\n",header->header_size);
-			printf("header crc: 0x%08x\n",header->header_crc);
+			printf("header crc: 0x%08x\n",header->header_crc32);
 			printf("primary GPT header on block %lld\n",header->my_lba);
-			printf("secondary GPT header on block %lld\n",header->other_lba);
-			printf("%d partitions on media\n",header->part_tab_count);
+			printf("secondary GPT header on block %lld\n",header->alternate_lba);
+			printf("%d partitions on media\n",header->num_partition_entries);
 
 			// read start and size of the partition tables
-			part_tab1_lba=le64_to_cpu(header->part_tab_lba);
+			part_tab1_lba=le64_to_cpu(header->partition_entry_lba);
 			part_tab2_lba=dev->lba-PART_BLOCKS_MAX;
-			count=le32_to_cpu(header->part_tab_count)*
-				le32_to_cpu(header->part_entry_size);
+			count=le32_to_cpu(header->num_partition_entries)*
+				le32_to_cpu(header->sizeof_partition_entry);
 			part_tab_blocks=count/dev->blksz;
 			if(count%dev->blksz)
 				part_tab_blocks++;
 			// adjust the position of the secondary gpt
-			header->other_lba=cpu_to_le64(dev->lba-GPT_HEAD_BLOCK);
+			header->alternate_lba=cpu_to_le64(dev->lba-GPT_HEAD_BLOCK);
 			printf("secondary GPT header will be on block %lld\n",
-				   header->other_lba);
+				   header->alternate_lba);
 			// ... and last usable LBA
 			printf("Last usable LBA will be %lld\n",part_tab2_lba-1);
-			header->last_lba=cpu_to_le64(part_tab2_lba-1);
+			header->last_usable_lba=cpu_to_le64(part_tab2_lba-1);
 			// update checksum
-			header->header_crc=0;
+			header->header_crc32=0;
 			crc=crc32(0, (const unsigned char *)header,
 					  le32_to_cpu(header->header_size));
 			printf("new crc: 0x%08x\n",crc);
-			header->header_crc=cpu_to_le32(crc);
+			header->header_crc32=cpu_to_le32(crc);
 			// write back
 			printf("write primary GPT header to block %lld\n",
 				   (uint64_t)GPT_HEAD_BLOCK);
@@ -711,15 +698,14 @@ int restore_backup_gpt(struct blk_desc *dev)
 			{
 				// adjust positions of gpt
 				header->my_lba=cpu_to_le64(dev->lba-GPT_HEAD_BLOCK);
-				header->other_lba=cpu_to_le64(GPT_HEAD_BLOCK);
-				//part_tab2_lba=dev->lba-PART_BLOCKS_MAX;
-				header->part_tab_lba=cpu_to_le64(part_tab2_lba);
+				header->alternate_lba=cpu_to_le64(GPT_HEAD_BLOCK);
+				header->partition_entry_lba=cpu_to_le64(part_tab2_lba);
 				// update checksum
-				header->header_crc=0;
+				header->header_crc32=0;
 				crc=crc32(0, (const unsigned char *)header,
 						  le32_to_cpu(header->header_size));
 				printf("new crc: 0x%08x\n",crc);
-				header->header_crc=cpu_to_le32(crc);
+				header->header_crc32=cpu_to_le32(crc);
 				// write back
 				printf("write secondary GPT header to block %lld\n",
 					   header->my_lba);
