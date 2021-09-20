@@ -37,6 +37,7 @@ extern struct dram_timing_info dram_timing_v1r2_4GB_K4FBE3D4HM;
 #ifdef LP_RAM_SETTING
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E304HB_LP;
 extern struct dram_timing_info dram_timing_v1r2_2GB_K4F6E3S4HM_LP;
+extern struct dram_timing_info dram_timing_MX8M_Mini_LPDDR4_RPA_v18_800MHz_4GByte_822r16c10_v1;
 #endif
 
 void spl_dram_init(void)
@@ -93,8 +94,13 @@ void spl_dram_init(void)
 				}												
 				break;
 			case KUK_RAMSIZE_4GB:	
+#ifdef LP_RAM_SETTING
+				printf("Choose MX8M_Mini_LPDDR4_RPA_v18_800MHz_4GByte_822r16c10_v1\r\n");			
+				ddr_init(&dram_timing_MX8M_Mini_LPDDR4_RPA_v18_800MHz_4GByte_822r16c10_v1);	
+#else
 				printf("Choose dram_timing_v1r2_4GB_K4FBE3D4HM\r\n");			
 				ddr_init(&dram_timing_v1r2_4GB_K4FBE3D4HM);	// 4GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+#endif
 				break;
 			default:
 				printf("Choose dram_timing_v1r2_2GB_K4F6E304HB\r\n");
