@@ -62,9 +62,10 @@ static int do_gzwritefile(cmd_tbl_t *cmdtp, int flag, int argc, char * const arg
 	}
 
 
-	ret = gzwritefile(bdev, argv[3], argv[4], argv[5], writebuf, force);
+	if(gzwritefile(bdev, argv[3], argv[4], argv[5], writebuf, force))
+		return CMD_RET_FAILURE;
 
-	return 0;
+	return CMD_RET_SUCCESS;
 }
 
 U_BOOT_CMD(

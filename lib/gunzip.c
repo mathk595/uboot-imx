@@ -160,7 +160,7 @@ int gzwritefile(struct blk_desc *dev,
 	res = fs_size(filename, &len);
 	if (res)
 	{
-		printf("Error: could find file\n");
+		printf("Error: could not find file\n");
 		return (-1);
 	}
 
