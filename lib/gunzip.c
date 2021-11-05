@@ -124,7 +124,9 @@ int gzwritefile(struct blk_desc *dev,
 		const char *part,
 		const char *filename,
 		unsigned long szwritebuf,
-		int force)
+		int force,
+		lbaint_t skip,
+		lbaint_t count)
 {
 	z_stream s;
 	int r = -1;
@@ -148,7 +150,7 @@ int gzwritefile(struct blk_desc *dev,
 
 	time = get_timer(0);
 
-	src = (unsigned char *)malloc_cache_aligned(BUFFERSIZE*3);
+	//src = (unsigned char *)malloc_cache_aligned(BUFFERSIZE*3);
 
 	printf ("Unpack %s %s %s to blkdevice \n\r", device, part, filename);
 
@@ -176,6 +178,17 @@ int gzwritefile(struct blk_desc *dev,
 	blksperbuf = szwritebuf / dev->blksz;
 	outblock = lldiv(0, dev->blksz);
 	
+	src = (unsigned char *)malloc_cache_aligned(BUFFERSIZE*3);
+	writebuf = (unsigned char *)malloc_cache_aligned(szwritebuf);
+	if(!src || !writebuf)
+	{
+		printf("Failed to allocate memory\n");
+		if(src)
+			free(src);
+		if(writebuf)
+			free(writebuf);
+		return -1;
+	}
 	res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
 	res = fs_read(filename, (ulong)src, 0, 0xFF , &actread);
 
@@ -189,6 +202,8 @@ int gzwritefile(struct blk_desc *dev,
 		if (src[8] != DEFLATED)
 			if (src[2] != DEFLATED) {
 				puts ("Error: Bad zipped data\n");
+				free(src);
+				free(writebuf);
 				return (-1);
 			}		
 		if(src[26] || src[27])
@@ -232,6 +247,8 @@ int gzwritefile(struct blk_desc *dev,
 		flags = src[3];
 		if (src[2] != DEFLATED || (flags & RESERVED) != 0) {
 			puts("Error: Bad gzipped data\n");
+			free(src);
+			free(writebuf);
 			return -1;
 		}
 		if ((flags & EXTRA_FIELD) != 0)
@@ -247,6 +264,8 @@ int gzwritefile(struct blk_desc *dev,
 
 		if (i >= len-8) {
 			puts("Error: gunzip out of data in header");
+			free(src);
+			free(writebuf);
 			return -1;
 		}
 
@@ -281,6 +300,8 @@ int gzwritefile(struct blk_desc *dev,
 		if (lldiv(szexpected, dev->blksz) > (dev->lba - outblock)) {
 			printf("%s: uncompressed size %llu exceeds device size %llu\n",
 				__func__, szexpected, (u64)dev->blksz*dev->lba);
+			free(src);
+			free(writebuf);
 			return -1;
 		}
 	}
@@ -296,6 +317,8 @@ int gzwritefile(struct blk_desc *dev,
 	r = inflateInit2(&s, -MAX_WBITS);
 	if (r != Z_OK) {
 		printf("Error: inflateInit2() returned %d\n", r);
+		free(src);
+		free(writebuf);
 		return -1;
 	}
 
@@ -303,7 +326,7 @@ int gzwritefile(struct blk_desc *dev,
 
 	s.next_in = src+BUFFERSIZE;
 	s.avail_in = BUFFERSIZE-i;
-	writebuf = (unsigned char *)malloc_cache_aligned(szwritebuf);
+	//writebuf = (unsigned char *)malloc_cache_aligned(szwritebuf);
 
 	u64 readpos = 0;
 	int stop_reading = 0;
@@ -404,6 +427,7 @@ int gzwritefile(struct blk_desc *dev,
 out:
 	gzwrite_progress_finish(r, totalfilled, szexpected,
 				expected_crc, crc);
+	free(src);
 	free(writebuf);
 	inflateEnd(&s);
 

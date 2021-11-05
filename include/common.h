@@ -495,7 +495,10 @@ int gzwritefile(struct blk_desc *dev,
 		const char *part,
 		const char *filename,
 		unsigned long szwritebuf,
-		int force);		
+		int force,
+		lbaint_t skip,
+		lbaint_t count);
+
 
 /**
  * restore the backup gpt after an image has been written

@@ -46,6 +46,8 @@ static int do_gzwritefile(cmd_tbl_t *cmdtp, int flag, int argc, char * const arg
 	int ret;
 	unsigned long writebuf = 1<<20;
 	int force = 0;
+	lbaint_t skip=0;
+	lbaint_t count=(lbaint_t)-1;
 
 	if (argc < 5)
 		return CMD_RET_USAGE;
@@ -61,18 +63,35 @@ static int do_gzwritefile(cmd_tbl_t *cmdtp, int flag, int argc, char * const arg
 		force = simple_strtoul(argv[7], NULL, 16);
 	}
 
+	if (8 < argc) {
+		skip = simple_strtoul(argv[8], NULL, 16);
+	}
 
-	if(gzwritefile(bdev, argv[3], argv[4], argv[5], writebuf, force))
+	if (9 < argc) {
+		count = simple_strtoul(argv[9], NULL, 16);
+	}
+
+
+	if(gzwritefile(bdev, argv[3], argv[4], argv[5], writebuf, force, skip, count))
 		return CMD_RET_FAILURE;
 
 	return CMD_RET_SUCCESS;
 }
 
 U_BOOT_CMD(
-	gzwritefile, 8, 0, do_gzwritefile,
+	gzwritefile, 9, 0, do_gzwritefile,
 	"unzip and write file to block device",
 	//"<interface> <dev> <interface> <dev> <filename>\n"
-	"<dst interface> <dst dev> <src interface> <src dev> <filename>\n"
+	"<dst-interface> <dst-dev> <src-interface> <src-dev> <filename>\n"
+	"\t[<buffer-size> [<force> [<skip> [count]]]]\n\n"
+	"\tdst-interface and dst-dev specify where to write to\n"
+	"\tsrc-interface, src-dev and filename specify what to write\n"
+	"\tbuffer-size sets the buffer size to be used, the default is 1MB\n"
+	"\twhen force is not zero, the file is written, even if it does not\n"
+	"\tfit the device\n"
+	"\tskip indicates a number of blocks to be skipped at the beginning,\n"
+	"\tthe default is 0\n"
+	"\tcount is the number of blocks to be written\n"
 );
 
 static int do_gzwrite(cmd_tbl_t *cmdtp, int flag,
