@@ -1969,4 +1969,11 @@ config CMD_UBIFS
 	help
 	  UBIFS is a file system for flash devices which works on top of UBI.
 
+config CMD_DUMP
+	bool "dump - dump a block device to a file"
+	depends on BLK && GZIP_COMPRESSED
+	help
+		Enables dumping a block device (partition or whole device) to a
+		(optionally compressed) file
+
 endmenu
