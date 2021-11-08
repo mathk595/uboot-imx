@@ -79,7 +79,7 @@ static int do_gzwritefile(cmd_tbl_t *cmdtp, int flag, int argc, char * const arg
 }
 
 U_BOOT_CMD(
-	gzwritefile, 9, 0, do_gzwritefile,
+	gzwritefile,10, 0, do_gzwritefile,
 	"unzip and write file to block device",
 	//"<interface> <dev> <interface> <dev> <filename>\n"
 	"<dst-interface> <dst-dev> <src-interface> <src-dev> <filename>\n"

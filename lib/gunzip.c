@@ -146,7 +146,8 @@ int gzwritefile(struct blk_desc *dev,
 	s64 MemBiggerThanImage=0;
 	unsigned long BUFFERSIZE;
 	unsigned long time;
-	int start=0;
+	int start=0; // writing has been started
+	int stop=0;  // stop writing
 
 	BUFFERSIZE = szwritebuf << 3;
 
@@ -157,7 +158,9 @@ int gzwritefile(struct blk_desc *dev,
 	printf ("Unpack %s %s %s to blkdevice \n\r", device, part, filename);
 	printf("Size of input buffer: %ld bytes\n", BUFFERSIZE*3);
 	printf("Size of output buffer: %ld bytes\n", szwritebuf);
-	printf("Skip first %ld blocks\n", skip_blocks);
+	printf("Skip first %"LBAFlength"d blocks\n", skip_blocks);
+	if(count_blocks != (lbaint_t)-1)
+		printf("Write %"LBAFlength"d blocks\n", count_blocks);
 
 	int res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
 	if (res)
@@ -395,23 +398,41 @@ int gzwritefile(struct blk_desc *dev,
 			gzwrite_progress(iteration++,
 					 totalfilled,
 					 szexpected);
-
+/*
+			if(count_blocks != (lbaint_t)-1 &&
+			   outblock + writeblocks > skip_blocks + count_blocks)
+			{
+				writeblocks = skip_blocks + count_blocks - outblock;
+				stop = 1;
+			}
+*/
 			if(outblock + writeblocks > skip_blocks)
 			{
 				lbaint_t offset=0;
+
 				if(skip_blocks > outblock)
 					offset = skip_blocks - outblock;
+				writeblocks -= offset;
+
+				if(count_blocks != (lbaint_t)-1 &&
+				   outblock + writeblocks > skip_blocks + count_blocks)
+				{
+					writeblocks = skip_blocks + count_blocks - outblock;
+					stop = 1;
+				}
+
 				if(!start)
 				{
 					printf("Start writing %ld blocks at block %ld\n",
-						   writeblocks - offset, outblock + offset);
+						   writeblocks, outblock + offset);
 					start=1;
 				}
+
 				blocks_written = blk_dwrite(dev,
 											outblock + offset,
-											writeblocks - offset,
+											writeblocks,
 											writebuf + offset * dev->blksz);
-				if(blocks_written + offset != writeblocks)
+				if(blocks_written != writeblocks)
 				{
 					if(IS_ERR_VALUE(blocks_written))
 					{
@@ -435,11 +456,12 @@ int gzwritefile(struct blk_desc *dev,
 				goto out;
 			}
 			WATCHDOG_RESET();
-		} while (s.avail_out == 0);
+		} while (s.avail_out == 0 && !stop);
 		/* done when inflate() says it's done */
-	} while (r != Z_STREAM_END);
+	} while (r != Z_STREAM_END && !stop);
 
-	if ((szexpected != totalfilled) ||
+	if (! stop ||
+		(szexpected != totalfilled) ||
 	    (crc != expected_crc))
 		r = -1;
 	else
@@ -456,7 +478,7 @@ out:
 	printf("%s restored in %lu ms \r\n", filename, time);
 
 	printf("%"LBAFlength"u of %"LBAFlength"u blocks written \r\n",
-		   outblock, dev->lba);
+		   outblock - skip_blocks, dev->lba);
 
 	if( force && (MemBiggerThanImage != 0) )
 	{
