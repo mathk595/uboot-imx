@@ -496,8 +496,8 @@ int gzwritefile(struct blk_desc *dev,
 		const char *filename,
 		unsigned long szwritebuf,
 		int force,
-		lbaint_t skip,
-		lbaint_t count);
+		lbaint_t skip_blocks,
+		lbaint_t count_blocks);
 
 
 /**

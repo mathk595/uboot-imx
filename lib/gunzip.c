@@ -125,14 +125,15 @@ int gzwritefile(struct blk_desc *dev,
 		const char *filename,
 		unsigned long szwritebuf,
 		int force,
-		lbaint_t skip,
-		lbaint_t count)
+		lbaint_t skip_blocks,
+		lbaint_t count_blocks)
 {
 	z_stream s;
 	int r = -1;
 	unsigned crc = 0;
 	u64 totalfilled = 0;
-	lbaint_t blksperbuf, outblock;
+	lbaint_t blksperbuf; // no of blocks the buffer can hold
+	lbaint_t outblock; // first block to be written
 	u32 expected_crc;
 	u64 payload_size;
 	int iteration = 0;
@@ -145,6 +146,7 @@ int gzwritefile(struct blk_desc *dev,
 	s64 MemBiggerThanImage=0;
 	unsigned long BUFFERSIZE;
 	unsigned long time;
+	int start=0;
 
 	BUFFERSIZE = szwritebuf << 3;
 
@@ -153,6 +155,9 @@ int gzwritefile(struct blk_desc *dev,
 	//src = (unsigned char *)malloc_cache_aligned(BUFFERSIZE*3);
 
 	printf ("Unpack %s %s %s to blkdevice \n\r", device, part, filename);
+	printf("Size of input buffer: %ld bytes\n", BUFFERSIZE*3);
+	printf("Size of output buffer: %ld bytes\n", szwritebuf);
+	printf("Skip first %ld blocks\n", skip_blocks);
 
 	int res = fs_set_blk_dev(device, part, FS_TYPE_FAT);
 	if (res)
@@ -176,7 +181,7 @@ int gzwritefile(struct blk_desc *dev,
 	}
 
 	blksperbuf = szwritebuf / dev->blksz;
-	outblock = lldiv(0, dev->blksz);
+	outblock = lldiv(0, dev->blksz); // this will allways be zero, or not?
 	
 	src = (unsigned char *)malloc_cache_aligned(BUFFERSIZE*3);
 	writebuf = (unsigned char *)malloc_cache_aligned(szwritebuf);
@@ -341,9 +346,9 @@ int gzwritefile(struct blk_desc *dev,
 
 		/* run inflate() on input until output buffer not full */
 		do {
-			unsigned long blocks_written;
+			unsigned long blocks_written; // no of blocks actually written
 			int numfilled;
-			lbaint_t writeblocks;
+			lbaint_t writeblocks; // no of blocks to be written
 
 			
 			s.avail_out = szwritebuf;
@@ -390,24 +395,40 @@ int gzwritefile(struct blk_desc *dev,
 			gzwrite_progress(iteration++,
 					 totalfilled,
 					 szexpected);
-			
-			blocks_written = blk_dwrite(dev, outblock,
-						    writeblocks, writebuf);
-			if(blocks_written != writeblocks)
+
+			if(outblock + writeblocks > skip_blocks)
 			{
-				if(IS_ERR_VALUE(blocks_written))
+				lbaint_t offset=0;
+				if(skip_blocks > outblock)
+					offset = skip_blocks - outblock;
+				if(!start)
 				{
-					printf("Write error on target device\n");
-					r=-1;
+					printf("Start writing %ld blocks at block %ld\n",
+						   writeblocks - offset, outblock + offset);
+					start=1;
 				}
-				else
+				blocks_written = blk_dwrite(dev,
+											outblock + offset,
+											writeblocks - offset,
+											writebuf + offset * dev->blksz);
+				if(blocks_written + offset != writeblocks)
 				{
-					printf("Target media full\n");
-					r=0;
+					if(IS_ERR_VALUE(blocks_written))
+					{
+						printf("Write error on target device\n");
+						r=-1;
+					}
+					else
+					{
+						printf("Target media full\n");
+						r=0;
+					}
+					goto out; // ugly
 				}
-				goto out; // ugly
+				outblock += blocks_written + offset;
 			}
-			outblock += blocks_written;
+			else
+				outblock += writeblocks;
 
 			if (ctrlc()) {
 				puts("abort\n");
