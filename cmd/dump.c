@@ -6,6 +6,7 @@
 #include <dm.h>
 #include <console.h>
 #include <u-boot/zlib.h>
+#include <time.h>
 
 #define DEFAULT_BUFF_SIZE (1 << 24) // 16MB
 #define ZLIB_MEM_LEVEL 9 // maximum memory, optimal speed
@@ -34,6 +35,7 @@ static int dump(struct blk_desc *dev, disk_partition_t *part,
 	unsigned long blk_total=0;
 	loff_t file_start=0;
 	loff_t file_count;
+	ulong t_rd=0,t_wr=0;
 
 
 	if(!(ops=blk_get_ops(dev->bdev)))
@@ -100,12 +102,15 @@ static int dump(struct blk_desc *dev, disk_partition_t *part,
 	blk_no=buff_size/dev->blksz;
 	while(state == STATE_OK)
 	{
-		printf("%8"LBAFlength"d / %8"LBAFlength"d\r",
+		//printf("%8"LBAFlength"d / %8"LBAFlength"d\r",
+		printf("%8"LBAFlength"d / %8"LBAFlength"d",
 			   blk_total, part->size);
 
 		if(blk_start+blk_no > part->start+part->size)
 			blk_no=part->start+part->size-blk_start;
+		t_rd=get_timer(0);
 		blk_count=ops->read(dev->bdev, blk_start, blk_no, buff_in);
+		t_rd=get_timer(t_rd);
 		//printf("blk_no=%"LBAFlength"d, blk_count=%"LBAFlength"d\n",
 		//	   blk_no, blk_count);
 
@@ -124,6 +129,7 @@ static int dump(struct blk_desc *dev, disk_partition_t *part,
 			state=STATE_FILE_ERROR;
 		if(state==STATE_OK || state==STATE_EOF)
 		{
+			t_wr=get_timer(0);
 			if(compress)
 			{
 				zstream.next_in=buff_in;
@@ -162,8 +168,10 @@ static int dump(struct blk_desc *dev, disk_partition_t *part,
 					file_start+=file_count;
 				else
 					state=STATE_FILE_ERROR;
+			t_wr=get_timer(t_wr);
 		}
 
+		printf(", rd=%dms, wr=%dms\n", t_rd, t_wr);
 		if(state == STATE_OK && ctrlc())
 			state=STATE_USER_ERROR;
 	}
