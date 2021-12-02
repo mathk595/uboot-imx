@@ -159,6 +159,23 @@ static void lvds_init(struct display_info_t const *dev)
 		valb[37] = 0x46;
 		valb[39] = 0x0A;
 	}
+	else if (strncmp(dev->mode.name, "LVDS_G156HAN02.1", strlen(dev->mode.name)) == 0)
+	{
+		printf("%s: -> LVDS_G156HAN02.1\n", __func__);
+		valb[2] = 0x83;
+		valb[3] = 0x28;
+		valb[7] = 0x48;
+		valb[9] = 0x6C;
+		valb[13] = 0x80;
+		valb[14] = 0x07;
+		valb[17] = 0x38;
+		valb[18] = 0x04;
+		valb[25] = 0x23;
+		valb[30] = 0x0A;
+		valb[33] = 0x23;
+		valb[37] = 0x46;
+		valb[39] = 0x0A;
+	}
 	
 	
 
@@ -566,6 +583,7 @@ void do_enable_mipi2hdmi(struct display_info_t const *dev)
 #define DATAIMAGE_ID 0x5C
 #define GOODIX_ID    0x5D //0x14
 #define ILITEK_ID    0x41 //0x14
+#define EGALAX_ID    0x2A // eGalax Touch / G156HAN02.1 Display (15.6" GuF)
 
 
 #define	FT5X06_OP_REG_CHIPID   0xA3			/* vendor’s chip id */
@@ -771,8 +789,7 @@ static int detect_pconxs(struct display_info_t const *dev, int touch)
 		return 0;
 	}
 	
-	i2c_bus = 2;
-	for(i2c_bus = 0; i2c_bus <= 2; i2c_bus++)
+	for(i2c_bus = 0; i2c_bus <= 1; i2c_bus++)
 	{
 		printf("%s: bus %d\n", __func__, i2c_bus);
 		ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
@@ -877,6 +894,19 @@ static int detect_display(struct display_info_t const *dev)
 				kuk_panel_drv.lanes = 4;
 				kuk_panel_drv.name = "LVDS_AM19201080D1";
 			}
+			else if(!(strncmp(s, "LVDS_G156HAN02.1", strlen(s))))
+			{
+				gpio_request(IMX_GPIO_NR(4, 14), "BL_EN");
+				gpio_direction_output(IMX_GPIO_NR(4, 14), 1);
+
+				gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
+				gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
+
+				gpio_request(IMX_GPIO_NR(3, 7), "PCIE_EN");
+				gpio_direction_output(IMX_GPIO_NR(3, 7), 1);
+				kuk_panel_drv.lanes = 4;
+				kuk_panel_drv.name = "LVDS_G156HAN02.1";
+			}
 
 			return 1;
 		}
@@ -922,6 +952,20 @@ static int detect_display(struct display_info_t const *dev)
 		{
 			kuk_panel_drv.lanes = 2;
 			kuk_panel_drv.name = "RGB18_ATM0700D6J";
+			return 1;
+		}
+		else
+			return 0;
+	}
+	else if((!(strncmp(dev->mode.name, "LVDS_G156HAN02.1", strlen(dev->mode.name)))) & (module == KUK_MODULE_TRIZEPS8MINI))
+	{
+		if(detect_pconxs(dev, EGALAX_ID))
+		{
+			gpio_request(IMX_GPIO_NR(3, 7), "PCIE_EN");
+			gpio_direction_output(IMX_GPIO_NR(3, 7), 1);
+
+			kuk_panel_drv.lanes = 4;
+			kuk_panel_drv.name = "LVDS_G156HAN02.1";
 			return 1;
 		}
 		else
@@ -1113,6 +1157,26 @@ struct display_info_t const displays[] = {{
 		.lower_margin	= 4,
 		.hsync_len		= 44,
 		.vsync_len		= 5,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_display,
+	.enable	= do_enable_mipi2lvds,
+	.mode	= {
+		.name			= "LVDS_G156HAN02.1",
+		.refresh		= 60,
+		.xres			= 1920,
+		.yres			= 1080,
+		.pixclock		= 6734, /* 68.5 > 70.5 MHz > 74.5 */
+		.left_margin	= 91,
+		.right_margin	= 91,
+		.upper_margin	= 8,
+		.lower_margin	= 8,
+		.hsync_len		= 40,
+		.vsync_len		= 4,
 		.sync			= FB_SYNC_EXT,
 		.vmode			= FB_VMODE_NONINTERLACED
 		
