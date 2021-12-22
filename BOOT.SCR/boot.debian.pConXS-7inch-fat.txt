@@ -1,5 +1,12 @@
 echo bootargs : $bootargs
-setenv   bootargs console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200 root=/dev/mmcblk0p2 rw
+echo bootdevice_type $bootdevice_type
+
+if test ${bootdevice_type} = "MMC"; then
+ setenv bootargs console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200 root=/dev/mmcblk0p2 rw androidboot.storage_type=emmc;
+else
+ setenv   bootargs console=ttymxc0,115200 earlycon=ec_imx6q,0x30860000,115200 root=/dev/mmcblk0p2 rw androidboot.storage_type=sd;
+fi;
+
 echo bootargs : $bootargs
 fatload mmc 0:1 ${fdt_addr} ${fdt_file}
 echo "Now Loading Kernel Image..." 
