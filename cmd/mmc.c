@@ -13,6 +13,7 @@
 
 #include <div64.h>
 static int curr_device = -1;
+int curr_device_mmc = 0;
 
 static void print_mmcinfo(struct mmc *mmc)
 {
@@ -514,11 +515,16 @@ static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
 
 	curr_device = dev;
 	if (mmc->part_config == MMCPART_NOAVAILABLE)
-		printf("mmc%d is current device\n", curr_device);
+	  printf("mmc%d is current device (%s)\n", curr_device, IS_SD(mmc) ? "SD" : "MMC");
 	else
-		printf("mmc%d(part %d) is current device\n",
-		       curr_device, mmc_get_blk_desc(mmc)->hwpart);
-
+		printf("mmc%d(part %d) is current device (%s)\n",
+		       curr_device, mmc_get_blk_desc(mmc)->hwpart,IS_SD(mmc) ? "SD" : "MMC");
+	
+	if( IS_SD(mmc) )
+	    env_set("bootdevice_type", "SD");
+	else
+	    env_set("bootdevice_type", "MMC");	  
+	
 	return CMD_RET_SUCCESS;
 }
 static int do_mmc_list(cmd_tbl_t *cmdtp, int flag,
