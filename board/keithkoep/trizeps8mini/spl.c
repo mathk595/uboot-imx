@@ -46,6 +46,7 @@ void spl_dram_init(void)
 	int version;
 	int ramsize;
 	int ramskew;
+	int versno=1;	
 
 	module	= kuk_GetModule();
 	version	= kuk_GetPCBrevision();
@@ -57,55 +58,53 @@ void spl_dram_init(void)
 		ddr_init(&dram_timing_v1r1);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH B/A
 	}else
 	{
+	        versno=version+1;	  
 		switch( ramsize)
 		{
-            case KUK_RAMSIZE_1GB:
-		if ( module == GUF_MODULE_TANARO)
-                {
-                    printf("Choose dram_timing_v1r2_1GB_K4F8E3S4HD\r\n");			
-				    ddr_init(&dram_timing_v1r2_1GB_K4F8E3S4HD);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B                    
-                }else
-                {   // Need to check if K4F8E3S4HD from Tanaro may be used for Trizeps VIII Mini
-                    printf("Choose dram_timing_v1r2_1GB_K4F8E3S4HB\r\n");			
-				    ddr_init(&dram_timing_v1r2_1GB_K4F8E3S4HD);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
-                }
-                break;
-			case KUK_RAMSIZE_2GB:
-				if ( ramskew == 0)
-				{	// Dual-Die 2ch with 2cs
+		  
+		case KUK_RAMSIZE_1GB:
+		     if ( module == GUF_MODULE_TANARO)
+		     {
+		       printf("Choose dram_timing_v1r%d_1GB_K4F8E3S4HD\r\n", versno);			
+		       ddr_init(&dram_timing_v1r2_1GB_K4F8E3S4HD);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B                    
+		     }else
+		     {   // Need to check if K4F8E3S4HD from Tanaro may be used for Trizeps VIII Mini
+		       printf("Choose dram_timing_v1r%d_1GB_K4F8E304HB\r\n", versno);			
+		       ddr_init(&dram_timing_v1r2_1GB_K4F8E304HB);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+		     }
+		     break;
+		     
+		case KUK_RAMSIZE_2GB:
+		  if ( ramskew == 0)
+		    {	// Dual-Die 2ch with 2cs
 #ifdef LP_RAM_SETTING
-					printf("Choose dram_timing_v1r2_2GB_K4F6E304HB_LP \r\n");
-					ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB_LP);
-#else
-					printf("Choose dram_timing_v1r2_2GB_K4F6E304HB \r\n");
-					ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+		      printf("Choose dram_timing_v1r%d_2GB_K4F6E304HB_LP \r\n", versno);
+		      ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB_LP);
+#else	
+		      printf("Choose dram_timing_v1r%d_2GB_K4F6E304HB \r\n", versno);
+		      ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
 #endif
-				}else
-				{	// Mono-Die 2ch with 1cs
+		    }else
+		    {	// Mono-Die 2ch with 1cs
 #ifdef LP_RAM_SETTING
-					printf("Choose dram_timing_v1r2_2GB_K4F6E3S4HM_LP\r\n");
-					ddr_init(&dram_timing_v1r2_2GB_K4F6E3S4HM_LP);	
-					
+		      printf("Choose dram_timing_v1r%d_2GB_K4F6E3S4HM_LP\r\n", versno);
+		      ddr_init(&dram_timing_v1r2_2GB_K4F6E3S4HM_LP);	
+		      
 #else
-					printf("Choose dram_timing_v1r2_2GB_K4F6E3S4HM\r\n");
-					ddr_init(&dram_timing_v1r2_2GB_K4F6E3S4HM);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+		      printf("Choose dram_timing_v1r%d_2GB_K4F6E3S4HM\r\n", versno);
+		      ddr_init(&dram_timing_v1r2_2GB_K4F6E3S4HM);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
 #endif
 								
-				}												
-				break;
-			case KUK_RAMSIZE_4GB:	
-#ifdef LP_RAM_SETTING
-				printf("Choose MX8M_Mini_LPDDR4_RPA_v18_800MHz_4GByte_822r16c10_v1\r\n");			
-				ddr_init(&dram_timing_MX8M_Mini_LPDDR4_RPA_v18_800MHz_4GByte_822r16c10_v1);	
-#else
-				printf("Choose dram_timing_v1r2_4GB_K4FBE3D4HM\r\n");			
-				ddr_init(&dram_timing_v1r2_4GB_K4FBE3D4HM);	// 4GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
-#endif
-				break;
-			default:
-				printf("Choose dram_timing_v1r2_2GB_K4F6E304HB\r\n");
-				ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
-				break;
+		    }												
+		    break;
+		case KUK_RAMSIZE_4GB:	
+		    printf("Choose dram_timing_v1r%d_4GB_K4FBE3D4HM\r\n", versno);			
+		    ddr_init(&dram_timing_v1r2_4GB_K4FBE3D4HM);	// 4GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+		    break;
+		default:
+		    printf("Choose dram_timing_v1r%d_2GB_K4F6E304HB\r\n", versno);
+		    ddr_init(&dram_timing_v1r2_2GB_K4F6E304HB);	// 2GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B
+		    break;
 		}
 	}	
 }
@@ -166,6 +165,16 @@ static iomux_v3_cfg_t const reset_out_pads[] = {
 	IMX8MM_PAD_NAND_DQS_GPIO3_IO14 | MUX_PAD_CTRL((PAD_CTL_HYS | PAD_CTL_DSE1)) 
 };
 
+#define SDHC1_VOLTAGE_SELECT_GPIO   IMX_GPIO_NR(3,17)
+#define GPIO_PAD_CTRL    (PAD_CTL_DSE6 | PAD_CTL_FSEL1 )
+#define GPIO_PAD_PU_CTRL (PAD_CTL_DSE6 | PAD_CTL_FSEL1 | PAD_CTL_PUE | PAD_CTL_PE)
+#define GPIO_PAD_PD_CTRL (PAD_CTL_DSE6 | PAD_CTL_FSEL1 |               PAD_CTL_PE)
+
+static iomux_v3_cfg_t const sdhc1_vselect_pads[] = {
+	IMX8MM_PAD_NAND_WE_B_SION_GPIO3_IO17 | MUX_PAD_CTRL( GPIO_PAD_PD_CTRL ), // SELECT SDHC1 VOLTAGE
+};
+
+
 /*
  * The evk board uses DAT3 to detect CD card plugin,
  * in u-boot we mux the pin to GPIO when doing board_mmc_getcd.
@@ -178,9 +187,11 @@ static struct fsl_esdhc_cfg usdhc_cfg[3] = {
 	{USDHC3_BASE_ADDR, 0, 4},
 };
 
+
 int board_mmc_init(bd_t *bis)
 {
 	int i, ret;
+	int module, version;
 	/*
 	 * According to the board_mmc_init() the following map is done:
 	 * (U-Boot device node)    (Physical Port)
@@ -188,13 +199,26 @@ int board_mmc_init(bd_t *bis)
 	 * mmc1                    USDHC2
 	 * mmc2                    USDHC3   (only on SBCSOM)
 	 */
-	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
+	printf("board_mmc_init:....\n");	
+	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++)
+	{
 		switch (i) {
 		case 0:
 			init_clk_usdhc(0);
 			usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
-			imx_iomux_v3_setup_multiple_pads(
-				usdhc1_pads, ARRAY_SIZE(usdhc1_pads));
+			imx_iomux_v3_setup_multiple_pads(usdhc1_pads, ARRAY_SIZE(usdhc1_pads));
+			module	= kuk_GetModule();
+			if( (module == KUK_MODULE_TRIZEPS8MINI) || (module == KUK_MODULE_TRIZEPS8NANO) )
+			{
+			  if( (version=kuk_GetPCBrevision()) >= KUK_PCBREV_V1R3 )
+			  {
+			    printf("board_mmc_init USDHC@0x%lx init voltsel\n\r",(unsigned long)usdhc_cfg[i].esdhc_base);			    
+			    imx_iomux_v3_setup_multiple_pads(sdhc1_vselect_pads, 1);	
+			    gpio_request(SDHC1_VOLTAGE_SELECT_GPIO, "SDHC1_VOLTAGE_SELECT");	
+			    gpio_direction_output(SDHC1_VOLTAGE_SELECT_GPIO, 0);
+			    gpio_free(SDHC1_VOLTAGE_SELECT_GPIO);			    			    
+			  }
+			}			
 			break;
 		case 1:
 			init_clk_usdhc(1);
@@ -202,44 +226,24 @@ int board_mmc_init(bd_t *bis)
 			imx_iomux_v3_setup_multiple_pads(
 				usdhc2_pads, ARRAY_SIZE(usdhc2_pads));
 			break;
-        case 2:
+		case 2:
 			init_clk_usdhc(2);
 			usdhc_cfg[2].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
 			imx_iomux_v3_setup_multiple_pads(
 				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
-            break;
+			break;
 		default:
 			printf("Warning: you configured more USDHC controllers"
 				"(%d) than supported by the board\n", i + 1);
 			return -EINVAL;
 		}
-
+		printf("board_mmc_init USDHC%d@0x%lx\n\r",i+1,(unsigned long)usdhc_cfg[i].esdhc_base);
 		ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
 		if (ret)
 			return ret;
 	}
 
 	return 0;
-}
-
-int board_mmc_getcd(struct mmc *mmc)
-{
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	int ret = 0;
-
-	switch (cfg->esdhc_base) {
-	case USDHC1_BASE_ADDR:
-		ret = 1;
-		break;
-	case USDHC2_BASE_ADDR:
-		ret = 1;
-		return ret;
-	case USDHC3_BASE_ADDR:
-		ret = 1;
-		return ret;
-	}
-
-	return 1;
 }
 
 #ifdef CONFIG_POWER
@@ -249,11 +253,9 @@ int power_init_board(void)
 	struct pmic *p;
 	int ret;
 	int module;
-	//int version;
 	int iovolt;
 	//unsigned int temp;
 	module	= kuk_GetModule();
-	//version = kuk_GetPCBrevision(); 
 	iovolt	= kuk_GetPeripheral( KUK_OTP_IOVOLTAGE);
 
 	ret = power_bd71837_init(I2C_PMIC);

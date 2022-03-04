@@ -85,10 +85,10 @@ static iomux_v3_cfg_t const uart_pads[] = {
 static iomux_v3_cfg_t const pcie_wifi_pads[] = {
         IMX8MM_PAD_I2C4_SCL_PCIE1_CLKREQ_B  | MUX_PAD_CTRL(0x61),          // CLKREQ_B  
 //      IMX8MM_PAD_I2C4_SCL_GPIO5_IO20      | MUX_PAD_CTRL(GPIO_PAD_CTRL), // CLKREQ_B
-	IMX8MM_PAD_NAND_WE_B_GPIO3_IO17     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_W_DISABLE_GPIO
 	IMX8MM_PAD_SD2_RESET_B_GPIO2_IO19   | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_RESET
 	IMX8MM_PAD_NAND_CLE_GPIO3_IO5       | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_WL_POWERDOWN
 	IMX8MM_PAD_NAND_CE1_B_GPIO3_IO2     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_WAKE
+	IMX8MM_PAD_NAND_WE_B_GPIO3_IO17     | MUX_PAD_CTRL(GPIO_PAD_CTRL), // PCIE_W_DISABLE_GPIO
 };
 
 static iomux_v3_cfg_t const pcie_ext_pads[] = {
@@ -129,32 +129,24 @@ static iomux_v3_cfg_t const reset_out_pads_v1r2[] = { IMX8MM_PAD_NAND_DQS_GPIO3_
 #define GPIO_RESET_OUT_V1R1         IMX_GPIO_NR(1, 2)
 #define GPIO_RESET_OUT_V1R2         IMX_GPIO_NR(3,14)
 
+#define SDHC1_VOLTAGE_SELECT_GPIO   IMX_GPIO_NR(3,17)
+// extern iomux_v3_cfg_t const sdhc1_vselect_pads[];
+
+
 #define GPIO4_DATA *(unsigned int *)0x30230000
 #define GPIO4_DIR  *(unsigned int *)0x30230004
 #define GPIO4_MUX  *(unsigned int *)0x30330178
 #define GPIO4_PAD  *(unsigned int *)0x303303E0
 
 int iomux_sai1_txd5, iopad_sai1_txd5;
+int board_init_has_run=0;
+
 #if defined(ENABLE_I2C_TRIZEPS8MINI) && ENABLE_I2C_TRIZEPS8MINI
 #ifdef CONFIG_VIDEO_MXS
 void   GetDisplayEnvironment(void);
 #endif
 #endif
-#if 0
-static void init_gpio4_17(int level)
-{
-       unsigned int dir,reg;
-       iomux_sai1_txd5=GPIO4_MUX;
-       iopad_sai1_txd5=GPIO4_PAD;       
-       imx_iomux_v3_setup_multiple_pads(pcie_ext_pads, 1); // Init expernal GPIO 4.17
 
-       reg= level ? (GPIO4_DATA | (1<<17)) : (GPIO4_DATA & ~(1<<17));
-       GPIO4_DATA = reg;
-       dir =  GPIO4_DIR | 1<<17;
-       GPIO4_DIR=dir;
-
-}
-#endif
 #if defined(ENABLE_I2C_TRIZEPS8MINI) && ENABLE_I2C_TRIZEPS8MINI
 static void init_camera_ov5640(void)
 {
@@ -187,7 +179,6 @@ int board_early_init_f(void)
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
 	
 	init_uart_clk(0);
-		
 	return 0;
 }
 
@@ -453,8 +444,8 @@ void mx8qm_pcie_init(void);
 
 static void setup_pcie(void)
 {
-    char *s;
-	int  internal_wifi=0, pcie_ext=0;
+        char *s;
+	int  internal_wifi=0, pcie_ext=0, pcbrev=1;
 
 	s = env_get("pcie");
 	if( s )
@@ -473,24 +464,29 @@ static void setup_pcie(void)
 
 	 if( internal_wifi )
 	 {
-	   //printk("> Setup PCIe Gpios for onboard Wifi Card\n");	   
+	   pcbrev=kuk_GetPCBrevision();		   
 	   printk("PCIE:  Configure for onboard Wifi Card\n");
-	   imx_iomux_v3_setup_multiple_pads(pcie_wifi_pads, ARRAY_SIZE(pcie_wifi_pads));
+	   // For V1R3 do not init IMX8MM_PAD_NAND_WE_B_GPIO3_IO17 --> Arraysize decrement
+	   imx_iomux_v3_setup_multiple_pads(pcie_wifi_pads,
+					    (pcbrev >= KUK_PCBREV_V1R3) ? (ARRAY_SIZE(pcie_wifi_pads)-1) : (ARRAY_SIZE(pcie_wifi_pads)) );
 	   gpio_request(PCIE_CLKREQ,                  "PCIE_CLKREQ");
 	   gpio_request(PCIE_WL_POWERDOWN,            "PCIE_WL_POWERDOWN");
 	   gpio_request(PCIE_WAKE,                    "PCIE_WAKE");
 	   gpio_request(PCIE_RESET,                   "PCIE_RESET");
-	   gpio_request(PCIE_W_DISABLE_GPIO,          "PCIE_W_DISABLE_GPIO");
+	   if( pcbrev < KUK_PCBREV_V1R3 )
+	     gpio_request(PCIE_W_DISABLE_GPIO,          "PCIE_W_DISABLE_GPIO");
 	   
 	   gpio_direction_output(PCIE_CLKREQ,          0); // Switch on PCIE CLKREQ
 	   gpio_direction_output(PCIE_WL_POWERDOWN,    0); // Switch on Wifi Module
-	   gpio_direction_output(PCIE_W_DISABLE_GPIO,  0); // Do not disable PCIe
+	   if( pcbrev < KUK_PCBREV_V1R3 )
+	     gpio_direction_output(PCIE_W_DISABLE_GPIO,0); // Do not disable PCIe
 	   gpio_direction_input( PCIE_WAKE);               // Take Wake as input
 	   gpio_direction_output(PCIE_RESET,           0); // Activate Reset
 	   udelay(1000);
-	   gpio_direction_output(PCIE_WL_POWERDOWN,    1); // Switch on Wifi Module
-	   udelay(1000);	
-	   gpio_direction_output(PCIE_W_DISABLE_GPIO,  1); // Do not disable PCIe
+	   gpio_direction_output(PCIE_WL_POWERDOWN,    1); // Switch on Wifi Module	   
+	   udelay(1000);
+	   if( pcbrev < KUK_PCBREV_V1R3 )	   
+	     gpio_direction_output(PCIE_W_DISABLE_GPIO,1); // Do not disable PCIe
 	   gpio_direction_output(PCIE_RESET,           1);
 	   udelay(500);	
 	   gpio_direction_output(PCIE_RESET,           0); // Activate Reset again
@@ -588,14 +584,11 @@ void reset_out(int val)
 int board_init(void)
 {
 	char text[256];
-  //    init_gpio4_17(0);  
-  //    printf("GPIO4.17 mux 0x%x, GPIO4.17 pad 0x%x \n", iomux_sai1_txd5, iopad_sai1_txd5);
 	kuk_GetArticleNo( &text[0], 24);
 	printf("Modul: %s\n", text);  
 	kuk_GetDescription( &text[0], sizeof( text));
 	printf("%s\n", text);  
 	reset_out(1);
-	
 #ifdef CONFIG_FEC_MXC
 	if ( kuk_GetPeripheral( KUK_PERIPHERAL_ETHERNET) != KUK_ETHERNET_NONE)
 	{		
@@ -612,7 +605,7 @@ int board_init(void)
 #endif	
 	/* Enable Uart4/Uart2 pre-set in imx8mm_bl31_setup.c bl31_early_platform_setup2() */
 	setup_periph2mcu();
-	
+	board_init_has_run=1;
 	return 0;
 }
 
@@ -675,6 +668,143 @@ int board_usb_cleanup(int index, enum usb_init_type init)
 	return(0);
 }
 
+static iomux_v3_cfg_t const sdhc1_vselect_pads[] = {
+	IMX8MM_PAD_NAND_WE_B_SION_GPIO3_IO17 | MUX_PAD_CTRL( GPIO_PAD_PD_CTRL ), // SELECT SDHC1 VOLTAGE
+};
+
+struct fsl_esdhc ;
+int sd1_was_already_1v8=0;
+
+int board_mmc_signal_voltage_eshdc( struct fsl_esdhc *regs, int volt)
+{
+	int version, ret = 1;
+	
+	if( ((version=kuk_GetPCBrevision()) < KUK_PCBREV_V1R2) && volt < 3300000 )
+	{
+	  printf("Trizeps8mini V1R%d does not support VMMC Voltage < 3.3V\n\r", version+1);	  
+	  return(1);
+	}	
+	switch ((unsigned long) regs)
+	{
+	        case USDHC1_BASE_ADDR:
+		  if( (volt >= 3000000) || (volt==0) )
+		  {
+		    if( sd1_was_already_1v8 )
+		    {
+		      printf("Trizeps8mini V1R%d USDHC1 do not set VMMC Voltage back to 3.3V\n\r", version+1);		      
+		    }else
+		    {			
+		      printf("Trizeps8mini V1R%d USDHC1 set VMMC Voltage 3.3V\n\r", version+1);
+		      imx_iomux_v3_setup_multiple_pads(sdhc1_vselect_pads, 1);
+		      gpio_request(SDHC1_VOLTAGE_SELECT_GPIO, "SDHC1_VOLTAGE_SELECT");
+		      gpio_direction_output(SDHC1_VOLTAGE_SELECT_GPIO, 0);
+		      gpio_free(SDHC1_VOLTAGE_SELECT_GPIO);
+		    }		    
+		  }else
+		  {
+		    gpio_request(SDHC1_VOLTAGE_SELECT_GPIO, "SDHC1_VOLTAGE_SELECT");
+		    imx_iomux_v3_setup_multiple_pads(sdhc1_vselect_pads, 1);		    
+		    printf("Trizeps8mini V1R%d USDHC1 set VMMC Voltage 1.8V\n\r", version+1);    
+		    gpio_direction_output(SDHC1_VOLTAGE_SELECT_GPIO, 1);
+		    gpio_free(SDHC1_VOLTAGE_SELECT_GPIO);
+		    sd1_was_already_1v8=1;	    
+		  }		  
+		  ret = 0;		  
+		  break;
+		  
+		case USDHC2_BASE_ADDR:
+		  if( (volt < 3000000) && (volt!=0) )
+		  {
+		      printf("Trizeps8mini V1R%d USDHC2 set VMMC Voltage %d impossible \n\r", version+1, volt);
+		  }else
+		  {
+    		      printf("Trizeps8mini V1R%d USDHC2 set VMMC Voltage %d\n\r", version+1, volt);
+		      ret = 0;		  		    
+		  }		  		  
+		  break;
+		    
+	        case USDHC3_BASE_ADDR:
+		  if( (volt < 3000000) && (volt!=0) )
+		  {
+		      printf("Trizeps8mini V1R%d USDHC3 set VMMC Voltage %d impossible \n\r", version+1, volt);
+		  }else
+		  {
+    		      printf("Trizeps8mini V1R%d USDHC3 set VMMC Voltage %d\n\r", version+1, volt);
+		      ret = 0;		  		    
+		  }		  		  
+		  break;
+		  
+	        default:
+		  if( volt == 0 )
+		  {
+		      printf("Trizeps8mini V1R%d ESDHC@0x%lx set VMMC Voltage %d, leave (3.3V)\n\r", version+1,
+			     (unsigned long) regs, volt);
+		      ret=0;		  
+		  }else	  
+		    printf("Trizeps8mini V1R%d ESDHC@0x%lx set VMMC Voltage %d impossible \n\r", version+1,
+			(unsigned long) regs, volt);
+		  break;		  
+	}
+	return ret;
+}
+
+int board_mmc_signal_voltage(struct mmc *mmc, int volt)
+{
+  printf("Trizeps8mini board_mmc_signal_voltage...\n\r");  
+  struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *) mmc->priv;
+  struct fsl_esdhc *regs    = (struct fsl_esdhc     *) cfg->esdhc_base;	  
+  return( board_mmc_signal_voltage_eshdc(regs, volt) );
+}
+
+
+int board_mmc_getcd(struct mmc *mmc, unsigned long esdhc_base)
+{
+	int ret = 0;
+	switch (esdhc_base) {
+	case USDHC1_BASE_ADDR:
+	        printf("board_mmc_getcd@0x%lx->1\n\r", (unsigned long) esdhc_base);		
+		return(1);
+		break;
+	case USDHC2_BASE_ADDR:
+		ret = (mmc_get_op_cond(mmc) < 0) ? 0 : 1;
+	        printf("board_mmc_getcd@0x%lx->%d\n\r",(unsigned long) esdhc_base, ret);			  
+		return ret;
+		break;		
+	case USDHC3_BASE_ADDR:
+		ret = (mmc_get_op_cond(mmc) < 0) ? 0 : 1;
+	        printf("board_mmc_getcd@0x%lx->%d\n\r",(unsigned long) esdhc_base, ret);			  	  
+		return ret;
+		break;
+	default:
+	        printf("board_mmc_getcd@0x%lx->-1\n\r",(unsigned long) esdhc_base);			  	  
+		return -1;
+	}
+	return(-1);	
+}
+
+int board_supports_uhs(unsigned long esdhc_base)
+{
+  int ret = 0;
+  int version,module;
+  
+  module =kuk_GetModule();
+  version=kuk_GetPCBrevision();
+  printf("board_supports_uhs@0x%lx=?  module:%d, version:%d esdhc_base=0 \n",
+	 esdhc_base, module, version);        
+
+  if(    (USDHC1_BASE_ADDR==esdhc_base)
+      && ((module == KUK_MODULE_TRIZEPS8MINI) || (module == KUK_MODULE_TRIZEPS8NANO)))
+  {
+    if( version >= KUK_PCBREV_V1R3 )
+    {
+      printf("board_supports_uhs=1  module:%d, version:%d \n", module, version);      
+      return(1);
+    }
+  }else
+    printf("board_supports_uhs=0  module:%d, version:%d \n", module, version);          
+  return(0);  
+}
+
 #ifdef CONFIG_FSL_FASTBOOT
 #ifdef CONFIG_ANDROID_RECOVERY
 int is_recovery_key_pressing(void)
@@ -683,3 +813,20 @@ int is_recovery_key_pressing(void)
 }
 #endif /*CONFIG_ANDROID_RECOVERY*/
 #endif /*CONFIG_FSL_FASTBOOT*/
+
+static int do_toggle_mmc_vsel(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+  int i;  
+  for( i=0; i < 10; i++ )
+  {      
+    board_mmc_signal_voltage_eshdc((struct fsl_esdhc *) USDHC1_BASE_ADDR, 1800000);
+    board_mmc_signal_voltage_eshdc((struct fsl_esdhc *) USDHC1_BASE_ADDR, 3300000);    
+  }
+  return(0);  
+}
+
+U_BOOT_CMD(
+	toggle_mmc_vsel, 2,1, do_toggle_mmc_vsel,
+	"toggle vsel pin",
+	"-"
+);

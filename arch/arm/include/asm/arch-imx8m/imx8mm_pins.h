@@ -286,7 +286,8 @@ enum {
          IMX8MM_PAD_NAND_WE_B_RAWNAND_WE_B                             =  IOMUX_PAD(0x03A0, 0x0138, 0, 0x0000, 0, 0),
          IMX8MM_PAD_NAND_WE_B_USDHC3_CLK                               =  IOMUX_PAD(0x03A0, 0x0138, 2 | IOMUX_CONFIG_SION, 0x0000, 0, 0),
          IMX8MM_PAD_NAND_WE_B_GPIO3_IO17                               =  IOMUX_PAD(0x03A0, 0x0138, 5, 0x0000, 0, 0),
-
+	 IMX8MM_PAD_NAND_WE_B_SION_GPIO3_IO17                          =  IOMUX_PAD(0x03A0, 0x0138, 5 | IOMUX_CONFIG_SION, 0x0000, 0, 0),
+	 
          IMX8MM_PAD_NAND_WP_B_RAWNAND_WP_B                             =  IOMUX_PAD(0x03A4, 0x013C, 0, 0x0000, 0, 0),
          IMX8MM_PAD_NAND_WP_B_USDHC3_CMD                               =  IOMUX_PAD(0x03A4, 0x013C, 2, 0x0000, 0, 0),
          IMX8MM_PAD_NAND_WP_B_GPIO3_IO18                               =  IOMUX_PAD(0x03A4, 0x013C, 5, 0x0000, 0, 0),
