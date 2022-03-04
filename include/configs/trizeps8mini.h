@@ -45,6 +45,7 @@
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
 #define CONFIG_SYS_UBOOT_BASE		(QSPI0_AMBA_BASE + CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * 512)
 
+
 #ifdef CONFIG_SPL_BUILD
 /*#define CONFIG_ENABLE_DDR_TRAINING_DEBUG*/
 #define CONFIG_SPL_WATCHDOG_SUPPORT
@@ -53,8 +54,8 @@
 #define CONFIG_SPL_I2C_SUPPORT
 #define CONFIG_SPL_LDSCRIPT		"arch/arm/cpu/armv8/u-boot-spl.lds"
 #define CONFIG_SPL_STACK		0x91fff0
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
+// #define CONFIG_SPL_LIBCOMMON_SUPPORT
+// #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
 #define CONFIG_SPL_BSS_START_ADDR      0x00910000
 #define CONFIG_SPL_BSS_MAX_SIZE        0x2000	/* 8 KB */
@@ -67,7 +68,35 @@
 
 #define CONFIG_SPL_ABORT_ON_RAW_IMAGE /* For RAW image gives a error info not panic */
 
-/* #undef CONFIG_DM_MMC */
+/* Next defines are not included to SPL Build, so those need to be defined here as
+   the config process does not pass this to the drivers/mmc folder
+*/
+#ifndef CONFIG_DM_MMC
+// #define CONFIG_DM_MMC 1
+#endif
+
+#ifndef CONFIG_MMC_UHS_SUPPORT
+#define CONFIG_MMC_UHS_SUPPORT 1
+#endif
+
+#ifndef CONFIG_MMC_HS200_SUPPORT
+#define CONFIG_MMC_HS200_SUPPORT 1
+#endif
+#ifndef CONFIG_MMC_HS400_SUPPORT
+#define CONFIG_MMC_HS400_SUPPORT 1
+#endif
+#ifndef CONFIG_MMC_HS400_ES_SUPPORT
+#define CONFIG_MMC_HS400_ES_SUPPORT 1
+#endif
+
+#if 0
+#ifdef CONFIG_DM_MMC
+#warning "CONFIG_DM_MMC=Y"
+#else
+#warning "# CONFIG_DM_MMC is not set"
+#endif
+#endif
+
 #undef CONFIG_DM_PMIC
 #undef CONFIG_DM_PMIC_PFUZE100
 
@@ -75,7 +104,7 @@
 #define CONFIG_POWER_I2C
 #define CONFIG_POWER_BD71837
 
-#define CONFIG_SYS_I2C
+// #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
@@ -139,7 +168,7 @@
 #endif
 
 
-#define CONFIG_LOADADDR					0x40480000
+#define CONFIG_LOADADDR			0x40480000
 #define CONFIG_SYS_LOAD_ADDR            CONFIG_LOADADDR
 #define SCRIPT_ADDR                     0x40400000
 
@@ -498,8 +527,10 @@
 #define CONFIG_IMX_BOOTAUX
 
 /* USDHC */
+#ifndef CONFIG_CMD_MMC
 #define CONFIG_CMD_MMC
-#define CONFIG_FSL_ESDHC
+#endif
+// #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 
 #ifdef CONFIG_SBCSOM
