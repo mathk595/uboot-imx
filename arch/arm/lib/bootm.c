@@ -229,7 +229,7 @@ static void do_nonsec_virt_switch(void)
 static void boot_prep_linux(bootm_headers_t *images)
 {
 	char *commandline = env_get("bootargs");
-
+	printf("Command-Line (%d)\n", (int)strlen(commandline));
 	if (IMAGE_ENABLE_OF_LIBFDT && images->ft_len) {
 #ifdef CONFIG_OF_LIBFDT
 		debug("using: FDT\n");
