@@ -171,7 +171,7 @@ static int dump(struct blk_desc *dev, disk_partition_t *part,
 			t_wr=get_timer(t_wr);
 		}
 
-		printf(", rd=%dms, wr=%dms\n", t_rd, t_wr);
+		printf(", rd=%lums, wr=%lums\n", t_rd, t_wr);
 		if(state == STATE_OK && ctrlc())
 			state=STATE_USER_ERROR;
 	}
