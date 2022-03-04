@@ -149,7 +149,8 @@ static struct mmc mmc_static = {
 struct mmc *mmc_create(const struct mmc_config *cfg, void *priv)
 {
 	struct mmc *mmc = &mmc_static;
-
+	printf("mmc_create MMC_TINY\n");
+	
 	mmc->cfg = cfg;
 	mmc->priv = priv;
 
@@ -164,7 +165,7 @@ struct mmc *mmc_create(const struct mmc_config *cfg, void *priv)
 {
 	struct blk_desc *bdesc;
 	struct mmc *mmc;
-
+	printf("mmc_create.....\n");
 	/* quick validation */
 	if (cfg == NULL || cfg->f_min == 0 ||
 	    cfg->f_max == 0 || cfg->b_max == 0)
@@ -174,7 +175,7 @@ struct mmc *mmc_create(const struct mmc_config *cfg, void *priv)
 	if (cfg->ops == NULL || cfg->ops->send_cmd == NULL)
 		return NULL;
 #endif
-
+	printf("mmc_create..1...\n");
 	mmc = calloc(1, sizeof(*mmc));
 	if (mmc == NULL)
 		return NULL;
@@ -199,7 +200,7 @@ struct mmc *mmc_create(const struct mmc_config *cfg, void *priv)
 	/* setup initial part type */
 	bdesc->part_type = mmc->cfg->part_type;
 	mmc_list_add(mmc);
-
+	
 	return mmc;
 }
 

@@ -5,6 +5,7 @@
  *
  * Based vaguely on the Linux code
  */
+// #define  DEBUG 1
 
 #include <config.h>
 #include <common.h>
@@ -21,11 +22,25 @@
 #include <div64.h>
 #include "mmc_private.h"
 
+int edhc_is_already_1v8_and_tuned(struct mmc *mmc);
 static int mmc_set_signal_voltage(struct mmc *mmc, uint signal_voltage);
 static int mmc_power_cycle(struct mmc *mmc);
 #if !CONFIG_IS_ENABLED(MMC_TINY)
 static int mmc_select_mode_and_width(struct mmc *mmc, uint card_caps);
 #endif
+
+extern int sd1_was_already_1v8;
+extern int sd1_was_already_tuned;
+
+unsigned long mmc_get_baseadr(struct mmc *mmc);
+
+int edhc_is_already_1v8_and_tuned(struct mmc *mmc)
+{
+  pr_debug("esdhc_is_already 1v8:%d trained:%d\n",sd1_was_already_1v8,sd1_was_already_tuned);
+  return( sd1_was_already_1v8 && sd1_was_already_tuned);  
+}
+
+
 
 #if !CONFIG_IS_ENABLED(DM_MMC)
 
@@ -57,7 +72,7 @@ int mmc_getwp(struct mmc *mmc)
 	return wp;
 }
 
-__weak int board_mmc_getcd(struct mmc *mmc)
+__weak int board_mmc_getcd(struct mmc *mmc, unsigned long esdhc_base)
 {
 	return -1;
 }
@@ -131,7 +146,7 @@ void mmc_trace_state(struct mmc *mmc, struct mmc_cmd *cmd)
 }
 #endif
 
-#if CONFIG_IS_ENABLED(MMC_VERBOSE) || defined(DEBUG)
+#if 1 || CONFIG_IS_ENABLED(MMC_VERBOSE) || defined(DEBUG)
 const char *mmc_mode_name(enum bus_mode mode)
 {
 	static const char *const names[] = {
@@ -475,6 +490,7 @@ static int mmc_go_idle(struct mmc *mmc)
 }
 
 #if CONFIG_IS_ENABLED(MMC_UHS_SUPPORT)
+extern int esdhc_is_already_1v8(struct mmc *);
 static int mmc_switch_voltage(struct mmc *mmc, int signal_voltage)
 {
 	struct mmc_cmd cmd;
@@ -484,10 +500,13 @@ static int mmc_switch_voltage(struct mmc *mmc, int signal_voltage)
 	 * Send CMD11 only if the request is to switch the card to
 	 * 1.8V signalling.
 	 */
+   if( esdhc_is_already_1v8(mmc) == 0 )
+   {
+	    
 	if (signal_voltage == MMC_SIGNAL_VOLTAGE_330)
 		return mmc_set_signal_voltage(mmc, signal_voltage);
 
-	cmd.cmdidx = SD_CMD_SWITCH_UHS18V;
+	cmd.cmdidx = SD_CMD_SWITCH_UHS18V; /* CMD11 */
 	cmd.cmdarg = 0;
 	cmd.resp_type = MMC_RSP_R1;
 
@@ -504,37 +523,45 @@ static int mmc_switch_voltage(struct mmc *mmc, int signal_voltage)
 	 */
 	err = mmc_wait_dat0(mmc, 0, 100);
 	if (err == -ENOSYS)
-		udelay(100);
+		udelay(1000);
 	else if (err)
 		return -ETIMEDOUT;
 
-	/*
+   }	/*
 	 * During a signal voltage level switch, the clock must be gated
 	 * for 5 ms according to the SD spec
 	 */
 	mmc_set_clock(mmc, mmc->clock, MMC_CLK_DISABLE);
 
-	err = mmc_set_signal_voltage(mmc, signal_voltage);
-	if (err)
-		return err;
-
-	/* Keep clock gated for at least 10 ms, though spec only says 5 ms */
-	mdelay(10);
-	mmc_set_clock(mmc, mmc->clock, MMC_CLK_ENABLE);
-
-	/*
-	 * Failure to switch is indicated by the card holding
-	 * dat[0:3] low. Wait for at least 1 ms according to spec
-	 */
-	err = mmc_wait_dat0(mmc, 1, 1000);
-	if (err == -ENOSYS)
-		udelay(1000);
-	else if (err)
-		return -ETIMEDOUT;
-
+	if( esdhc_is_already_1v8(mmc) == 0 )
+	{
+	  pr_debug("call  mmc_set_signal_voltage %d\n", signal_voltage);
+	  err = mmc_set_signal_voltage(mmc, signal_voltage);
+	  pr_debug(" mmc_set_signal_voltage %d->%d\n", signal_voltage, err);	
+	  if (err)
+	    return err;
+	  /* Keep clock gated for at least 10 ms, though spec only says 5 ms */
+	  mdelay(10);
+	  mmc_set_clock(mmc, mmc->clock, MMC_CLK_ENABLE);
+	  /*
+	   * Failure to switch is indicated by the card holding
+	   * dat[0:3] low. Wait for at least 1 ms according to spec
+	   */
+	  err = mmc_wait_dat0(mmc, 1, 1000);
+	  if (err == -ENOSYS)
+	    udelay(1000);
+	  else if (err)
+	    return -ETIMEDOUT;
+	}else
+	{
+	  /* Keep clock gated for at least 10 ms, though spec only says 5 ms */
+	  mdelay(10);
+	  mmc_set_clock(mmc, mmc->clock, MMC_CLK_ENABLE);
+	}	   
 	return 0;
 }
 #endif
+int esdhc_is_already_1v8(struct mmc *mmc);
 
 static int sd_send_op_cond(struct mmc *mmc, bool uhs_en)
 {
@@ -543,7 +570,7 @@ static int sd_send_op_cond(struct mmc *mmc, bool uhs_en)
 	struct mmc_cmd cmd;
 
 	while (1) {
-		cmd.cmdidx = MMC_CMD_APP_CMD;
+		cmd.cmdidx = MMC_CMD_APP_CMD; /* CMD55 */
 		cmd.resp_type = MMC_RSP_R1;
 		cmd.cmdarg = 0;
 
@@ -552,7 +579,7 @@ static int sd_send_op_cond(struct mmc *mmc, bool uhs_en)
 		if (err)
 			return err;
 
-		cmd.cmdidx = SD_CMD_APP_SEND_OP_COND;
+		cmd.cmdidx = SD_CMD_APP_SEND_OP_COND; /* CMD41 */
 		cmd.resp_type = MMC_RSP_R3;
 
 		/*
@@ -600,14 +627,21 @@ static int sd_send_op_cond(struct mmc *mmc, bool uhs_en)
 	}
 
 	mmc->ocr = cmd.response[0];
+	if( esdhc_is_already_1v8(mmc) )
+	  mmc->ocr |= OCR_S18R;
+	
 
 #if CONFIG_IS_ENABLED(MMC_UHS_SUPPORT)
-	if (uhs_en && !(mmc_host_is_spi(mmc)) && (cmd.response[0] & 0x41000000)
-	    == 0x41000000) {
+	if (                               (uhs_en && !(mmc_host_is_spi(mmc)) && (cmd.response[0] & 0x41000000) == 0x41000000)
+	    ||(esdhc_is_already_1v8(mmc) && uhs_en && !(mmc_host_is_spi(mmc)) && (cmd.response[0] & 0x41000000) == 0x40000000))
+	{
+	        pr_debug("call mmc_switch_voltage (%d) 1.8V. ocr=0x%x.\n",
+		       MMC_SIGNAL_VOLTAGE_180, (unsigned int) mmc->ocr);		  
 		err = mmc_switch_voltage(mmc, MMC_SIGNAL_VOLTAGE_180);
+		pr_debug("mmc_switch_voltage 1.8 -> %d\n", err);		
 		if (err)
 			return err;
-	}
+	  }
 #endif
 
 	mmc->high_capacity = ((mmc->ocr & OCR_HCS) == OCR_HCS);
@@ -1173,8 +1207,14 @@ int mmc_hwpart_config(struct mmc *mmc,
 int mmc_getcd(struct mmc *mmc)
 {
 	int cd;
-
-	cd = board_mmc_getcd(mmc);
+	unsigned long baseadr;
+	
+	if (mmc->cfg->ops->get_baseadr)
+	  baseadr=mmc->cfg->ops->get_baseadr(mmc);       
+	else
+	  return(1);
+	
+	cd = board_mmc_getcd(mmc, baseadr);
 
 	if (cd < 0) {
 		if (mmc->cfg->ops->getcd)
@@ -2334,7 +2374,8 @@ static int mmc_startup(struct mmc *mmc)
 			return err;
 	}
 #endif
-
+	pr_debug("mmc_startup...\n");
+	
 	/* Put the Card in Identify Mode */
 	cmd.cmdidx = mmc_host_is_spi(mmc) ? MMC_CMD_SEND_CID :
 		MMC_CMD_ALL_SEND_CID; /* cmd not supported in spi */
@@ -2344,6 +2385,10 @@ static int mmc_startup(struct mmc *mmc)
 	err = mmc_send_cmd(mmc, &cmd, NULL);
 
 #ifdef CONFIG_MMC_QUIRKS
+
+	mmc->quirks = MMC_QUIRK_RETRY_SET_BLOCKLEN |
+		      MMC_QUIRK_RETRY_SEND_CID;
+
 	if (err && (mmc->quirks & MMC_QUIRK_RETRY_SEND_CID)) {
 		int retries = 4;
 		/*
@@ -2628,9 +2673,14 @@ static void mmc_set_initial_state(struct mmc *mmc)
 	int err;
 
 	/* First try to set 3.3V. If it fails set to 1.8V */
+	pr_debug("mmc_set_initial_state>>>3.3V\n");
 	err = mmc_set_signal_voltage(mmc, MMC_SIGNAL_VOLTAGE_330);
 	if (err != 0)
+	{
+	        pr_debug("mmc_set_initial_state 1.8V\n");	  
 		err = mmc_set_signal_voltage(mmc, MMC_SIGNAL_VOLTAGE_180);
+	}
+	
 	if (err != 0)
 		pr_warn("mmc: failed to set signal voltage\n");
 
@@ -2685,11 +2735,23 @@ static int mmc_power_cycle(struct mmc *mmc)
 	return mmc_power_on(mmc);
 }
 
+int board_supports_uhs(unsigned long esdhc_base);
+
 int mmc_get_op_cond(struct mmc *mmc)
 {
-	bool uhs_en = supports_uhs(mmc->cfg->host_caps);
+        bool uhs_en = supports_uhs(mmc->cfg->host_caps);
 	int err;
-
+#if CONFIG_IS_ENABLED(DM_MMC)
+	unsigned long baseadr=mmc_get_baseadr(mmc);
+	uhs_en = board_supports_uhs(baseadr);
+#else	
+	unsigned long baseadr;
+	if (mmc->cfg->ops->get_baseadr)
+	{
+	  baseadr=mmc->cfg->ops->get_baseadr(mmc);
+	  uhs_en = board_supports_uhs(baseadr);
+	}
+#endif	
 	if (mmc->has_init)
 		return 0;
 
@@ -2702,9 +2764,11 @@ int mmc_get_op_cond(struct mmc *mmc)
 
 #ifdef CONFIG_MMC_QUIRKS
 	mmc->quirks = MMC_QUIRK_RETRY_SET_BLOCKLEN |
-		      MMC_QUIRK_RETRY_SEND_CID;
+		      MMC_QUIRK_RETRY_SEND_CID |
+		      MMC_QUIRK_RETRY_APP_CMD;
 #endif
-
+	pr_debug(" mmc_get_op_cond uhs_en=%d\n", uhs_en);
+	
 	err = mmc_power_cycle(mmc);
 	if (err) {
 		/*
@@ -2714,6 +2778,7 @@ int mmc_get_op_cond(struct mmc *mmc)
 		 */
 		pr_debug("Unable to do a full power cycle. Disabling the UHS modes for safety\n");
 		uhs_en = false;
+		printf(" mmc_get_op_cond after powercycle uhs_en=%d\n", uhs_en);		
 		mmc->host_caps &= ~UHS_CAPS;
 		err = mmc_power_on(mmc);
 	}
@@ -2747,7 +2812,9 @@ retry:
 	err = mmc_send_if_cond(mmc);
 
 	/* Now try to get the SD card's operating condition */
+	pr_debug(" mmc_get_op_cond before send op_cond uhs_en=%d\n", uhs_en);
 	err = sd_send_op_cond(mmc, uhs_en);
+	pr_debug("sd_send_op_cond(mmc, uhs_en=%d)=%d\n", uhs_en, err);	
 	if (err && uhs_en) {
 		uhs_en = false;
 		mmc_power_cycle(mmc);
@@ -2797,8 +2864,9 @@ int mmc_start_init(struct mmc *mmc)
 #endif
 		return -ENOMEDIUM;
 	}
-
-	err = mmc_get_op_cond(mmc);
+	pr_debug("mmc_start_init mmc_get_op_cond().....\n");	
+	err = mmc_get_op_cond(mmc);   // This tests op_cond and switches if possible to 1.8V
+	pr_debug("mmc_start_init mmc_get_op_cond()=%d\n", err);	
 
 	if (!err)
 		mmc->init_in_progress = 1;
@@ -2812,10 +2880,17 @@ static int mmc_complete_init(struct mmc *mmc)
 
 	mmc->init_in_progress = 0;
 	if (mmc->op_cond_pending)
-		err = mmc_complete_op_cond(mmc);
-
+	{	    
+	  err = mmc_complete_op_cond(mmc);
+	  printf(" mmc_complete_op_cond with:%d\n", err);
+	}
+	
 	if (!err)
-		err = mmc_startup(mmc);
+	{
+	  err = mmc_startup(mmc);
+	  printf("mmc_startup with:%d\n", err);	  
+	}
+	
 	if (err)
 		mmc->has_init = 0;
 	else
@@ -2823,15 +2898,31 @@ static int mmc_complete_init(struct mmc *mmc)
 	return err;
 }
 
+struct mmc_dev 
+{
+  unsigned long base;
+  int           wasinit;
+};
+
 int mmc_init(struct mmc *mmc)
 {
 	int err = 0;
 	__maybe_unused ulong start;
 #if CONFIG_IS_ENABLED(DM_MMC)
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(mmc->dev);
-
+	unsigned long baseadr=mmc_get_baseadr(mmc);	
 	upriv->mmc = mmc;
+	baseadr=mmc_get_baseadr(mmc);		
+	pr_debug("mmc_init (DM):0x%lx(%d)\n",baseadr,mmc->has_init);	
+#else
+	unsigned long baseadr;
+	if (mmc->cfg->ops->get_baseadr)
+	{
+	  baseadr=mmc->cfg->ops->get_baseadr(mmc);
+	}
+	pr_debug("mmc_init (NON DM):0x%lx(%d)\n",baseadr, mmc->has_init);
 #endif
+	
 	if (mmc->has_init)
 		return 0;
 
@@ -2842,6 +2933,9 @@ int mmc_init(struct mmc *mmc)
 
 	if (!err)
 		err = mmc_complete_init(mmc);
+	else
+	  pr_debug("mmc_start_init failed with:%d\n", err);
+	
 	if (err)
 		pr_info("%s: %d, time %lu\n", __func__, err, get_timer(start));
 
@@ -2903,7 +2997,7 @@ static int mmc_probe(bd_t *bis)
 	int ret, i;
 	struct uclass *uc;
 	struct udevice *dev;
-
+        pr_debug("mmc_probe (DM)\n");
 	ret = uclass_get(UCLASS_MMC, &uc);
 	if (ret)
 		return ret;
@@ -2918,7 +3012,8 @@ static int mmc_probe(bd_t *bis)
 		if (ret == -ENODEV)
 			break;
 	}
-	uclass_foreach_dev(dev, uc) {
+	uclass_foreach_dev(dev, uc) {	  
+	        pr_debug("mmc_probe (DM).(0x%x)...\n", (dev != NULL) ? dev->flags : -1);	  
 		ret = device_probe(dev);
 		if (ret)
 			pr_err("%s - probe failed: %d\n", dev->name, ret);
@@ -2929,9 +3024,13 @@ static int mmc_probe(bd_t *bis)
 #else
 static int mmc_probe(bd_t *bis)
 {
+        pr_debug("mmc_probe (NON-DM)\n");
+  
 	if (board_mmc_init(bis) < 0)
-		cpu_mmc_init(bis);
-
+	{
+	  pr_debug("mmc_probe (DM)...\n");
+	  cpu_mmc_init(bis);
+	}
 	return 0;
 }
 #endif
@@ -2942,7 +3041,6 @@ int mmc_initialize(bd_t *bis)
 	int ret;
 	if (initialized)	/* Avoid initializing mmc multiple times */
 		return 0;
-	initialized = 1;
 
 #if !CONFIG_IS_ENABLED(BLK)
 #if !CONFIG_IS_ENABLED(MMC_TINY)
@@ -2958,6 +3056,7 @@ int mmc_initialize(bd_t *bis)
 #endif
 
 	mmc_do_preinit();
+	initialized = 1;	
 	return 0;
 }
 

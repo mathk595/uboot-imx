@@ -11,6 +11,7 @@
 #include <dm/lists.h>
 #include "mmc_private.h"
 
+
 int dm_mmc_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 		    struct mmc_data *data)
 {
@@ -46,6 +47,20 @@ int mmc_set_ios(struct mmc *mmc)
 {
 	return dm_mmc_set_ios(mmc->dev);
 }
+
+unsigned long dm_mmc_get_baseadr(struct udevice *dev)
+{
+	struct dm_mmc_ops *ops = mmc_get_ops(dev);	
+	if (!ops->get_baseadr)
+		return -ENOSYS;	
+	return ops->get_baseadr(dev);	
+}
+
+unsigned long mmc_get_baseadr(struct mmc *mmc)
+{
+  return dm_mmc_get_baseadr(mmc->dev);  
+}
+
 
 void dm_mmc_send_init_stream(struct udevice *dev)
 {
@@ -114,9 +129,14 @@ int dm_mmc_execute_tuning(struct udevice *dev, uint opcode)
 	return ops->execute_tuning(dev, opcode);
 }
 
+
 int mmc_execute_tuning(struct mmc *mmc, uint opcode)
 {
-	return dm_mmc_execute_tuning(mmc->dev, opcode);
+   if( edhc_is_already_1v8_and_tuned(mmc) == 0 )
+   {
+     return dm_mmc_execute_tuning(mmc->dev, opcode);
+   }else
+     return(0);   
 }
 #endif
 

@@ -202,6 +202,7 @@
 #define ESDHC_STROBE_DLL_CLK_FREQ	100000000
 
 #define ESDHC_STD_TUNING_EN             BIT(24)
+#define ESDHC_TUNING_CMD_CRC_CHECK_DISABLE    BIT(7)
 /* NOTE: the minimum valid tuning start tap for mx6sl is 1 */
 #define ESDHC_TUNING_START_TAP_DEFAULT	0x1
 #define ESDHC_TUNING_START_TAP_MASK	0xff

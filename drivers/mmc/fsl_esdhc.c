@@ -27,6 +27,21 @@
 #include <asm-generic/gpio.h>
 #include <dm/pinctrl.h>
 #include <asm/arch/sys_proto.h>
+#include <stdio.h>
+#include <linux/iopoll.h>
+
+#define  UPDATE_2021  1
+
+#ifdef MMC_SUPPORTS_TUNING
+// #undef MMC_SUPPORTS_TUNING
+// #warning "who did set: EMMC_SUPPORTS_TUNING????"
+#endif
+
+#ifndef ESDHCI_QUIRK_BROKEN_TIMEOUT_VALUE
+#ifdef CONFIG_FSL_USDHC
+#define ESDHCI_QUIRK_BROKEN_TIMEOUT_VALUE	1
+#endif
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -151,6 +166,10 @@ struct fsl_esdhc_priv {
 	struct gpio_desc wp_gpio;
 #endif
 };
+
+extern int sd1_was_already_1v8;
+       int sd1_was_already_tuned=0;
+
 
 /* Return the XFERTYP flags for a given command and data packet */
 static uint esdhc_xfertyp(struct mmc_cmd *cmd, struct mmc_data *data)
@@ -444,12 +463,14 @@ static int esdhc_send_cmd_common(struct fsl_esdhc_priv *priv, struct mmc *mmc,
 	while (esdhc_read32(&regs->prsstat) & PRSSTAT_DLA)
 		;
 
+#ifndef UPDATE_2021 // KEITH from 2021 Bootloader: remove this fix
 	/* Wait at least 8 SD clock cycles before the next command */
 	/*
 	 * Note: This is way more than 8 cycles, but 1ms seems to
 	 * resolve timing issues with some cards
 	 */
 	udelay(1000);
+#endif
 
 	/* Set up for a data transfer if we have one */
 	if (data) {
@@ -508,6 +529,7 @@ static int esdhc_send_cmd_common(struct fsl_esdhc_priv *priv, struct mmc *mmc,
 		esdhc_setbits32(&regs->vendorspec, ESDHC_VENDORSPEC_VSELECT);
 
 		printf("Run CMD11 1.8V switch\n");
+		board_mmc_signal_voltage_eshdc(regs, 1800000);
 		/* Sleep for 5 ms - max time for card to switch to 1.8V */
 		udelay(5000);
 	}
@@ -606,14 +628,16 @@ out:
 	}
 
 	esdhc_write32(&regs->irqstat, -1);
-
+	if( err )
+	  pr_debug("SDHC@0x%lx CMD:%d (result:%d)\n\r",(unsigned long) regs, cmd->cmdidx,err);
 	return err;
 }
 
 static void set_sysctl(struct fsl_esdhc_priv *priv, struct mmc *mmc, uint clock)
 {
 	struct fsl_esdhc *regs = priv->esdhc_regs;
-	int div = 1;
+	u32 tmp;	
+	int ret=0, div = 1;
 #ifdef ARCH_MXC
 #ifdef CONFIG_MX53
 	/* For i.MX53 eSDHCv3, SYSCTL.SDCLKFS may not be set to 0. */
@@ -659,7 +683,11 @@ static void set_sysctl(struct fsl_esdhc_priv *priv, struct mmc *mmc, uint clock)
 
 	esdhc_clrsetbits32(&regs->sysctl, SYSCTL_CLOCK_MASK, clk);
 
-	udelay(10000);
+	ret = readl_poll_timeout(&regs->prsstat, tmp, tmp & PRSSTAT_SDSTB, 100);
+	if (ret)
+		pr_warn("fsl_esdhc_imx: Internal clock never stabilised.\n");
+
+//	udelay(10000);
 
 #ifdef CONFIG_FSL_USDHC
 	esdhc_setbits32(&regs->vendorspec, VENDORSPEC_PEREN | VENDORSPEC_CKEN);
@@ -810,9 +838,18 @@ static int esdhc_set_timing(struct mmc *mmc)
 	}
 
 	priv->mode = mmc->selected_mode;
-
+#if CONFIG_IS_ENABLED(DM_MMC)
 	return esdhc_change_pinstate(mmc->dev);
+#else
+	return(0);
+#endif	
 }
+
+int __weak board_mmc_signal_voltage_eshdc(struct fsl_esdhc *regs, int volt)
+{
+  return(1);  
+}
+
 
 static int esdhc_set_voltage(struct mmc *mmc)
 {
@@ -820,40 +857,65 @@ static int esdhc_set_voltage(struct mmc *mmc)
 	struct fsl_esdhc *regs = priv->esdhc_regs;
 	int ret;
 
+	pr_debug("esdhc_set_voltage..%d..\n\r",mmc->signal_voltage);
+	
 	priv->signal_voltage = mmc->signal_voltage;
 	switch (mmc->signal_voltage) {
 	case MMC_SIGNAL_VOLTAGE_330:
 		if (priv->vs18_enable)
-			return -EIO;
+		{
+		  pr_debug("esdhc_set_voltage: vs18_enable No 3.3V (-EIO)\r\n");  
+		  return -EIO;
+		}
+		
 #if CONFIG_IS_ENABLED(DM_REGULATOR)
-		if (!IS_ERR_OR_NULL(priv->vqmmc_dev)) {
+		!IS_ERR_OR_NULL(priv->vqmmc_dev))
+		{
 			ret = regulator_set_value(priv->vqmmc_dev, 3300000);
 			if (ret) {
-				printf("Setting to 3.3V error");
+				printf("Setting to 3.3V error\n\r");
 				return -EIO;
 			}
 			/* Wait for 5ms */
 			mdelay(5);
 		}
-#endif
+#else
+		ret = board_mmc_signal_voltage_eshdc( regs, 3300000);
+		if (ret)
+		{
+			printf("Setting to 3.3V error\n\r");
+			return -EIO;
+		}
+		/* Wait for 5ms */		
+		mdelay(5);
+#endif		
 
-		esdhc_clrbits32(&regs->vendorspec, ESDHC_VENDORSPEC_VSELECT);
-		if (!(esdhc_read32(&regs->vendorspec) &
-		    ESDHC_VENDORSPEC_VSELECT))
+		esdhc_clrbits32(&regs->vendorspec,      ESDHC_VENDORSPEC_VSELECT);
+		if (!(esdhc_read32(&regs->vendorspec) & ESDHC_VENDORSPEC_VSELECT))
 			return 0;
 
 		return -EAGAIN;
 	case MMC_SIGNAL_VOLTAGE_180:
 #if CONFIG_IS_ENABLED(DM_REGULATOR)
-		if (!IS_ERR_OR_NULL(priv->vqmmc_dev)) {
+	        !IS_ERR_OR_NULL(priv->vqmmc_dev))
+		{
 			ret = regulator_set_value(priv->vqmmc_dev, 1800000);
 			if (ret) {
 				printf("Setting to 1.8V error");
 				return -EIO;
 			}
+		}else
+		  printf("esdhc_set_voltage vqmmc_dev err or 0\r\n");		  
+#else
+                ret = board_mmc_signal_voltage_eshdc(regs, 1800000);		  		  
+		if (ret)
+		{
+		         printf("Setting to 1.8V error");
+			 return -EIO;
 		}
-#endif
-		esdhc_setbits32(&regs->vendorspec, ESDHC_VENDORSPEC_VSELECT);
+                priv->vs18_enable=1;
+#endif		
+		esdhc_setbits32(&regs->vendorspec,    ESDHC_VENDORSPEC_VSELECT);
 		if (esdhc_read32(&regs->vendorspec) & ESDHC_VENDORSPEC_VSELECT)
 			return 0;
 
@@ -872,8 +934,11 @@ static void esdhc_stop_tuning(struct mmc *mmc)
 	cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
 	cmd.cmdarg = 0;
 	cmd.resp_type = MMC_RSP_R1b;
-
+#if CONFIG_IS_ENABLED(DM_MMC)
 	dm_mmc_send_cmd(mmc->dev, &cmd, NULL);
+#else
+	mmc_send_cmd(mmc, &cmd, NULL);	
+#endif	
 }
 
 static int fsl_esdhc_execute_tuning(struct udevice *dev, uint32_t opcode)
@@ -887,6 +952,8 @@ static int fsl_esdhc_execute_tuning(struct udevice *dev, uint32_t opcode)
 	int i, ret = -ETIMEDOUT;
 	u32 val, mixctrl;
 
+	pr_debug("fsl_esdhc_execute_tuning: opcode:%d clk:%d\n", opcode, mmc->clock);
+	
 	/* clock tuning is not needed for upto 52MHz */
 	if (mmc->clock <= 52000000)
 		return 0;
@@ -946,19 +1013,23 @@ static int fsl_esdhc_execute_tuning(struct udevice *dev, uint32_t opcode)
 			 * response to any command when the card still out
 			 * put the tuning data.
 			 */
+#ifndef UPDATE_2021
 			mdelay(1);
+#endif			
 			ret = 0;
 			break;
 		}
 
 		/* Add 1ms delay for SD and eMMC */
+#ifndef UPDATE_2021
 		mdelay(1);
+#endif		
 	}
 
 	writel(irqstaten, &regs->irqstaten);
 	writel(irqsigen, &regs->irqsigen);
-
-	esdhc_stop_tuning(mmc);
+	sd1_was_already_tuned=1;  
+	// esdhc_stop_tuning(mmc);
 
 	return ret;
 }
@@ -1000,6 +1071,7 @@ static int esdhc_set_ios_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
 #endif
 	}
 
+#ifndef UPDATE_2021
 	if (priv->mode != mmc->selected_mode) {
 		ret = esdhc_set_timing(mmc);
 		if (ret) {
@@ -1007,12 +1079,15 @@ static int esdhc_set_ios_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
 			return ret;
 		}
 	}
-
+#endif
+	
 	if (priv->signal_voltage != mmc->signal_voltage) {
+	  
+	        pr_debug("%s change voltage from %d to %d\n", __FUNCTION__,priv->signal_voltage, mmc->signal_voltage);
 		ret = esdhc_set_voltage(mmc);
 		if (ret) {
-			printf("esdhc_set_voltage error %d\n", ret);
-			return ret;
+		    printf("esdhc_set_voltage error %d\n", ret);
+		    return ret;
 		}
 	}
 #endif
@@ -1091,9 +1166,17 @@ static int esdhc_init_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
 	return 0;
 }
 
+board_mmc_getcd(struct mmc *, unsigned long);
+
+#if 1
+static int esdhc_getcd_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
+{        
+	unsigned long          regs = (unsigned long)priv->esdhc_regs;  
+	return(board_mmc_getcd(mmc,   regs));	
+#else
 static int esdhc_getcd_common(struct fsl_esdhc_priv *priv)
-{
-	struct fsl_esdhc *regs = priv->esdhc_regs;
+{        
+	struct fsl_esdhc *regs = priv->esdhc_regs;	
 	int timeout = 1000;
 
 #ifdef CONFIG_ESDHC_DETECT_QUIRK
@@ -1114,6 +1197,7 @@ static int esdhc_getcd_common(struct fsl_esdhc_priv *priv)
 		udelay(1000);
 
 	return timeout > 0;
+#endif	
 }
 
 static int esdhc_reset(struct fsl_esdhc *regs)
@@ -1139,8 +1223,9 @@ static int esdhc_reset(struct fsl_esdhc *regs)
 static int esdhc_getcd(struct mmc *mmc)
 {
 	struct fsl_esdhc_priv *priv = mmc->priv;
-
-	return esdhc_getcd_common(priv);
+	int ret= esdhc_getcd_common(priv, mmc);
+	pr_debug("esdhc_getcd@0x%lx getcd: %d\n\r", (unsigned long) priv->esdhc_regs, ret);
+	return ret;
 }
 
 static int esdhc_init(struct mmc *mmc)
@@ -1165,13 +1250,27 @@ static int esdhc_set_ios(struct mmc *mmc)
 	return esdhc_set_ios_common(priv, mmc);
 }
 
+static unsigned long esdhc_getbaseadr(struct mmc *mmc)
+{
+	struct fsl_esdhc_priv *priv = mmc->priv;
+	return(priv->esdhc_regs);
+}
+
 static const struct mmc_ops esdhc_ops = {
 	.getcd		= esdhc_getcd,
 	.init		= esdhc_init,
 	.send_cmd	= esdhc_send_cmd,
 	.set_ios	= esdhc_set_ios,
+	.get_baseadr    = esdhc_getbaseadr,
 };
 #endif
+
+int esdhc_is_already_1v8(struct mmc *mmc)
+{
+  pr_debug("esdhc_is_already_1v8: %d\n",sd1_was_already_1v8);
+  return(sd1_was_already_1v8);  
+}
+
 
 static int fsl_esdhc_init(struct fsl_esdhc_priv *priv,
 			  struct fsl_esdhc_plat *plat)
@@ -1302,6 +1401,18 @@ static int fsl_esdhc_init(struct fsl_esdhc_priv *priv,
 			val |= priv->tuning_start_tap;
 			val &= ~ESDHC_TUNING_STEP_MASK;
 			val |= (priv->tuning_step) << ESDHC_TUNING_STEP_SHIFT;
+
+			/* Disable the CMD CRC check for tuning, if not, need to
+			 * add some delay after every tuning command, because
+			 * hardware standard tuning logic will directly go to next
+			 * step once it detect the CMD CRC error, will not wait for
+			 * the card side to finally send out the tuning data, trigger
+			 * the buffer read ready interrupt immediately. If usdhc send
+			 * the next tuning command some eMMC card will stuck, can't
+			 * response, block the tuning procedure or the first command
+			 * after the whole tuning procedure always can't get any response.
+			 */
+			val |= ESDHC_TUNING_CMD_CRC_CHECK_DISABLE;
 			writel(val, &regs->tuning_ctrl);
 		}
 	}
@@ -1510,7 +1621,7 @@ static int fsl_esdhc_probe(struct udevice *dev)
 		priv->bus_width = 4;
 	else
 		priv->bus_width = 1;
-
+#if defined(CONFIG_OF_LIBFDT) && 0
 	val = fdtdec_get_int(fdt, node, "fsl,tuning-step", 1);
 	priv->tuning_step = val;
 	val = fdtdec_get_int(fdt, node, "fsl,tuning-start-tap",
@@ -1519,6 +1630,12 @@ static int fsl_esdhc_probe(struct udevice *dev)
 	val = fdtdec_get_int(fdt, node, "fsl,strobe-dll-delay-target",
 			     ESDHC_STROBE_DLL_CTRL_SLV_DLY_TARGET_DEFAULT);
 	priv->strobe_dll_delay_target = val;
+#else
+	priv->tuning_step      = 2;
+	priv->tuning_start_tap = 20;
+	priv->strobe_dll_delay_target = ESDHC_STROBE_DLL_CTRL_SLV_DLY_TARGET_DEFAULT;
+#endif
+
 
 	if (dev_read_bool(dev, "non-removable")) {
 		priv->non_removable = 1;
@@ -1549,16 +1666,22 @@ static int fsl_esdhc_probe(struct udevice *dev)
 	 */
 	ret = device_get_supply_regulator(dev, "vqmmc-supply", &vqmmc_dev);
 	if (ret) {
-		dev_dbg(dev, "no vqmmc-supply\n");
+	    unsigned long adr = ustrtoul(&dev->name[4],NULL,16);
+	    printf("fsl_esdhc.c %s: (0x%lx) no vqmmc-supply adr:0x%lx\n",
+		   dev->name,(unsigned long) priv->esdhc_regs, adr);
 	} else {
 		ret = regulator_set_enable(vqmmc_dev, true);
 		if (ret) {
-			dev_err(dev, "fail to enable vqmmc-supply\n");
+			printf("mmc: fail to enable vqmmc-supply\n");
 			return ret;
 		}
 
 		if (regulator_get_value(vqmmc_dev) == 1800000)
+	        {
+		        printf("mmc: vqmmc-supply fixed\n");		    
 			priv->vs18_enable = 1;
+		}
+		
 	}
 #endif
 
@@ -1627,8 +1750,9 @@ static int fsl_esdhc_probe(struct udevice *dev)
 static int fsl_esdhc_get_cd(struct udevice *dev)
 {
 	struct fsl_esdhc_priv *priv = dev_get_priv(dev);
-
-	return esdhc_getcd_common(priv);
+	struct fsl_esdhc_plat *plat = dev_get_platdata(dev);
+	struct mmc  *mmc            = &plat->mmc;        
+	return esdhc_getcd_common(priv,mmc);
 }
 
 static int fsl_esdhc_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
@@ -1661,6 +1785,12 @@ static void fsl_esdhc_set_enhanced_strobe(struct udevice *dev)
 }
 #endif
 
+static unsigned long fsl_esdhc_getbaseadr(struct udevice *dev)
+{
+	struct fsl_esdhc_priv *priv = dev_get_priv(dev);
+	return((unsigned long)priv->esdhc_regs);
+}
+
 static const struct dm_mmc_ops fsl_esdhc_ops = {
 	.get_cd		= fsl_esdhc_get_cd,
 	.send_cmd	= fsl_esdhc_send_cmd,
@@ -1671,6 +1801,8 @@ static const struct dm_mmc_ops fsl_esdhc_ops = {
 #if CONFIG_IS_ENABLED(MMC_HS400_ES_SUPPORT)
 	.set_enhanced_strobe = fsl_esdhc_set_enhanced_strobe,
 #endif
+	.get_baseadr    = fsl_esdhc_getbaseadr,
+
 };
 #endif
 
