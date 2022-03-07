@@ -375,7 +375,6 @@ int kuk_GetRAMSkew( void)
     return skew;
 }
 
-#define FORCE__KUK_PCBREV KUK_PCBREV_V1R3
 
 int kuk_GetPCBrevision( void)
 {
