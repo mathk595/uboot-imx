@@ -375,6 +375,8 @@ int kuk_GetRAMSkew( void)
     return skew;
 }
 
+#define FORCE__KUK_PCBREV KUK_PCBREV_V1R3
+
 int kuk_GetPCBrevision( void)
 {
     int rev = ASSUME__KUK_PCBREV;
@@ -1259,11 +1261,11 @@ int kuk_GetDescription( char *pDescription, int maxsize )
 
     if ( module >= GUF_MODULE_TANARO)
     {
-        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "This is a Garz & Fricke GmbH  %s %s running a %s with %s,%dbit RAM and booting from %s.\n",
+        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Garz&Fricke GmbH %s %s running a %s with %s,%dbit RAM booting from %s.\n",
                 cModuleName[ module], str_rev, str_cpu, str_ramsize, kuk_GetRAMWidth(), cStore[ store]
             );
     }else{
-        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "This is a Keith & Koep GmbH  %s %s running a %s with %s,%dbit RAM and booting from %s.\n",
+        cnt += snprintf(&pDescription[cnt], maxsize - cnt, "Keith&Koep GmbH %s %s running a %s with %s,%dbit RAM booting from %s.\n",
                 cModuleName[ module], str_rev, str_cpu, str_ramsize, kuk_GetRAMWidth(), cStore[ store]
             );
     }

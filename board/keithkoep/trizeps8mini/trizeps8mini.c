@@ -704,7 +704,8 @@ int board_mmc_signal_voltage_eshdc( struct fsl_esdhc *regs, int volt)
 		  {
 		    gpio_request(SDHC1_VOLTAGE_SELECT_GPIO, "SDHC1_VOLTAGE_SELECT");
 		    imx_iomux_v3_setup_multiple_pads(sdhc1_vselect_pads, 1);		    
-		    printf("Trizeps8mini V1R%d USDHC1 set VMMC Voltage 1.8V\n\r", version+1);    
+		    if( sd1_was_already_1v8==0)
+		      printf("Trizeps8mini V1R%d USDHC1 set VMMC Voltage 1.8V\n\r", version+1);    
 		    gpio_direction_output(SDHC1_VOLTAGE_SELECT_GPIO, 1);
 		    gpio_free(SDHC1_VOLTAGE_SELECT_GPIO);
 		    sd1_was_already_1v8=1;	    
@@ -762,7 +763,7 @@ int board_mmc_getcd(struct mmc *mmc, unsigned long esdhc_base)
 	int ret = 0;
 	switch (esdhc_base) {
 	case USDHC1_BASE_ADDR:
-	        printf("board_mmc_getcd@0x%lx->1\n\r", (unsigned long) esdhc_base);		
+	        pr_debug("board_mmc_getcd@0x%lx->1\n\r", (unsigned long) esdhc_base);		
 		return(1);
 		break;
 	case USDHC2_BASE_ADDR:
@@ -784,12 +785,12 @@ int board_mmc_getcd(struct mmc *mmc, unsigned long esdhc_base)
 
 int board_supports_uhs(unsigned long esdhc_base)
 {
-  int ret = 0;
   int version,module;
+  static int printed=0;
   
   module =kuk_GetModule();
   version=kuk_GetPCBrevision();
-  printf("board_supports_uhs@0x%lx=?  module:%d, version:%d esdhc_base=0 \n",
+  pr_debug("board_supports_uhs@0x%lx=?  module:%d, version:%d esdhc_base=0 \n",
 	 esdhc_base, module, version);        
 
   if(    (USDHC1_BASE_ADDR==esdhc_base)
@@ -797,11 +798,17 @@ int board_supports_uhs(unsigned long esdhc_base)
   {
     if( version >= KUK_PCBREV_V1R3 )
     {
-      printf("board_supports_uhs=1  module:%d, version:%d \n", module, version);      
+      if( !printed)
+	printf("board_supports_uhs=1  module:%d, version:%d \n", module, version);
+      printed=1;      
       return(1);
     }
   }else
-    printf("board_supports_uhs=0  module:%d, version:%d \n", module, version);          
+  {
+    if( !printed)    
+      printf("board_supports_uhs=0  module:%d, version:%d \n", module, version);          
+    printed=1;            
+  }
   return(0);  
 }
 

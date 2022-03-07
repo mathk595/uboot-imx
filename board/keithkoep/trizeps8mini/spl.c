@@ -199,7 +199,6 @@ int board_mmc_init(bd_t *bis)
 	 * mmc1                    USDHC2
 	 * mmc2                    USDHC3   (only on SBCSOM)
 	 */
-	printf("board_mmc_init:....\n");	
 	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++)
 	{
 		switch (i) {
@@ -237,7 +236,7 @@ int board_mmc_init(bd_t *bis)
 				"(%d) than supported by the board\n", i + 1);
 			return -EINVAL;
 		}
-		printf("board_mmc_init USDHC%d@0x%lx\n\r",i+1,(unsigned long)usdhc_cfg[i].esdhc_base);
+		pr_debug("board_mmc_init USDHC%d@0x%lx\n\r",i+1,(unsigned long)usdhc_cfg[i].esdhc_base);
 		ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
 		if (ret)
 			return ret;

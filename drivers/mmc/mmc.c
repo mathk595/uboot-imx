@@ -2827,6 +2827,7 @@ retry:
 
 		if (err) {
 #if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
+		  if( IS_SD(mmc) )
 			pr_err("Card did not respond to voltage select!\n");
 #endif
 			return -EOPNOTSUPP;
@@ -2882,13 +2883,13 @@ static int mmc_complete_init(struct mmc *mmc)
 	if (mmc->op_cond_pending)
 	{	    
 	  err = mmc_complete_op_cond(mmc);
-	  printf(" mmc_complete_op_cond with:%d\n", err);
+	  pr_debug(" mmc_complete_op_cond with:%d\n", err);
 	}
 	
 	if (!err)
 	{
 	  err = mmc_startup(mmc);
-	  printf("mmc_startup with:%d\n", err);	  
+	  pr_debug("mmc_startup with:%d\n", err);	  
 	}
 	
 	if (err)
