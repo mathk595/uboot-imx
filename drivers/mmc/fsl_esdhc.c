@@ -167,6 +167,15 @@ struct fsl_esdhc_priv {
 #endif
 };
 
+int __weak board_mmc_signal_voltage_eshdc(struct fsl_esdhc *regs, int volt)
+{
+  return(1);  
+}
+int __weak board_mmc_getcd(struct mmc *mmc, unsigned long esdhc_base)
+{
+  return(1);    
+}
+
 extern int sd1_was_already_1v8;
        int sd1_was_already_tuned=0;
 
@@ -728,6 +737,7 @@ static void esdhc_clock_control(struct fsl_esdhc_priv *priv, bool enable)
 #endif
 
 #ifdef MMC_SUPPORTS_TUNING
+#ifndef UPDATE_2021
 static int esdhc_change_pinstate(struct udevice *dev)
 {
 	struct fsl_esdhc_priv *priv = dev_get_priv(dev);
@@ -768,6 +778,7 @@ static void esdhc_reset_tuning(struct mmc *mmc)
 		}
 	}
 }
+
 
 static void esdhc_set_strobe_dll(struct mmc *mmc)
 {
@@ -844,12 +855,7 @@ static int esdhc_set_timing(struct mmc *mmc)
 	return(0);
 #endif	
 }
-
-int __weak board_mmc_signal_voltage_eshdc(struct fsl_esdhc *regs, int volt)
-{
-  return(1);  
-}
-
+#endif
 
 static int esdhc_set_voltage(struct mmc *mmc)
 {
@@ -857,14 +863,15 @@ static int esdhc_set_voltage(struct mmc *mmc)
 	struct fsl_esdhc *regs = priv->esdhc_regs;
 	int ret;
 
-	pr_debug("esdhc_set_voltage..%d..\n\r",mmc->signal_voltage);
+	pr_debug("esdhc_set_voltage(%s)..%d..\n\r", (IS_SD(mmc) ? "SD":"MMC" ), mmc->signal_voltage);
 	
 	priv->signal_voltage = mmc->signal_voltage;
 	switch (mmc->signal_voltage) {
 	case MMC_SIGNAL_VOLTAGE_330:
 		if (priv->vs18_enable)
 		{
-		  pr_debug("esdhc_set_voltage: vs18_enable No 3.3V (-EIO)\r\n");  
+		  if( IS_SD(mmc))
+		      pr_debug("esdhc_set_voltage: vs18_enable No 3.3V (-EIO)\r\n");  
 		  return -EIO;
 		}
 		
@@ -907,7 +914,7 @@ static int esdhc_set_voltage(struct mmc *mmc)
 		}else
 		  printf("esdhc_set_voltage vqmmc_dev err or 0\r\n");		  
 #else
-                ret = board_mmc_signal_voltage_eshdc(regs, 1800000);		  		  
+                ret = board_mmc_signal_voltage_eshdc(regs, 1800000);
 		if (ret)
 		{
 		         printf("Setting to 1.8V error");
@@ -927,6 +934,7 @@ static int esdhc_set_voltage(struct mmc *mmc)
 	}
 }
 
+#if 0
 static void esdhc_stop_tuning(struct mmc *mmc)
 {
 	struct mmc_cmd cmd;
@@ -940,6 +948,7 @@ static void esdhc_stop_tuning(struct mmc *mmc)
 	mmc_send_cmd(mmc, &cmd, NULL);	
 #endif	
 }
+#endif
 
 static int fsl_esdhc_execute_tuning(struct udevice *dev, uint32_t opcode)
 {
@@ -1085,9 +1094,13 @@ static int esdhc_set_ios_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
 	  
 	        pr_debug("%s change voltage from %d to %d\n", __FUNCTION__,priv->signal_voltage, mmc->signal_voltage);
 		ret = esdhc_set_voltage(mmc);
-		if (ret) {
+		if (ret)
+	        {
+		  if( !IS_MMC(mmc) || (ret != -EIO) )
+		  {
 		    printf("esdhc_set_voltage error %d\n", ret);
-		    return ret;
+		  }
+		  return ret;
 		}
 	}
 #endif
@@ -1165,8 +1178,6 @@ static int esdhc_init_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
 
 	return 0;
 }
-
-board_mmc_getcd(struct mmc *, unsigned long);
 
 #if 1
 static int esdhc_getcd_common(struct fsl_esdhc_priv *priv, struct mmc *mmc)
@@ -1253,7 +1264,7 @@ static int esdhc_set_ios(struct mmc *mmc)
 static unsigned long esdhc_getbaseadr(struct mmc *mmc)
 {
 	struct fsl_esdhc_priv *priv = mmc->priv;
-	return(priv->esdhc_regs);
+	return((unsigned long)priv->esdhc_regs);
 }
 
 static const struct mmc_ops esdhc_ops = {
