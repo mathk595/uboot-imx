@@ -249,21 +249,51 @@
 #endif
 #endif
 #else
-#ifdef CONFIG_TRIZEPS8MINI_V1R2_4GB
-#ifdef CONFIG_MOUNTOPTION_EMMC
-#define KUK_FUSE_PRODUCTION \
+ #ifdef CONFIG_TRIZEPS8MINI_V1R2_4GB
+  #ifdef CONFIG_MOUNTOPTION_EMMC
+   #define KUK_FUSE_PRODUCTION \
 	KUK_FUSE_SETTINGS \
 	"fuse_config=fuse prog 14 0 0x14100000; run fuse_emmc \0" 
-#else
-#ifdef CONFIG_MOUNTOPTION_SD
-#define KUK_FUSE_PRODUCTION \
+  #else
+   #ifdef CONFIG_MOUNTOPTION_SD
+    #define KUK_FUSE_PRODUCTION \
 	KUK_FUSE_SETTINGS \
 	"fuse_config=fuse prog 14 0 0x14100000; run fuse_sd \0" 
-#else
-#define KUK_FUSE_PRODUCTION
-#endif
-#endif
-#else
+   #else
+    #define KUK_FUSE_PRODUCTION
+   #endif
+  #endif
+ #else
+ #ifdef CONFIG_TRIZEPS8MINI_V1R3_2GB
+  #ifdef CONFIG_MOUNTOPTION_EMMC
+   #define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x12200000; run fuse_emmc \0" 
+  #else
+   #ifdef CONFIG_MOUNTOPTION_SD
+    #define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x12200000; run fuse_sd \0" 
+   #else
+    #define KUK_FUSE_PRODUCTION
+   #endif
+  #endif
+ #else
+ #ifdef CONFIG_TRIZEPS8MINI_V1R3_4GB
+  #ifdef CONFIG_MOUNTOPTION_EMMC
+   #define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x14200000; run fuse_emmc \0" 
+  #else
+   #ifdef CONFIG_MOUNTOPTION_SD
+    #define KUK_FUSE_PRODUCTION \
+	KUK_FUSE_SETTINGS \
+	"fuse_config=fuse prog 14 0 0x14200000; run fuse_sd \0" 
+   #else
+    #define KUK_FUSE_PRODUCTION
+   #endif
+  #endif
+ #else
 #ifdef CONFIG_SBCSOM8MINI_V1R1_1GB
 #ifdef CONFIG_MOUNTOPTION_EMMC
 #define KUK_FUSE_PRODUCTION \
@@ -319,6 +349,8 @@
 #endif 
 #endif 
 #endif 
+#endif
+#endif
 
 /* Initial environment variables */
 #if defined(CONFIG_NAND_BOOT)
