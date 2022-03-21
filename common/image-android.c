@@ -183,7 +183,14 @@ int android_image_get_kernel(const struct andr_img_hdr *hdr, int verify,
 			strncat(commandline, newbootargs, sizeof(commandline) - strlen(commandline));
 		}
 	}
-
+#define KUK_ARTICLE
+#ifdef  KUK_ARTICLE
+	{
+	  extern char ArticleText[];	  
+	  strncat(commandline, " kuk_article=", sizeof(commandline) - strlen(commandline));
+	  strncat(commandline,  ArticleText,    sizeof(commandline) - strlen(commandline));
+	}
+#endif
 	/* boot metric variables */
 	metrics.ble_1 = get_timer(0);
 	sprintf(newbootargs,
