@@ -692,11 +692,11 @@ int kuk_GetArticleNo( char *pArticle, int maxsize )
         
         switch( kuk_GetBootStorage())
         {
-            case KUK_BOOTSTORAGE_SDCARD:    pArticle[10]= '0'; break;
-            case KUK_BOOTSTORAGE_EMMC4GB:   pArticle[10]= '1'; break;
-            case KUK_BOOTSTORAGE_EMMC8GB:   pArticle[10]= '2'; break;
-            case KUK_BOOTSTORAGE_EMMC16GB:  pArticle[10]= '3'; break;
-            default:                        pArticle[10]= 'x'; break;
+            case KUK_BOOTSTORAGE_SDCARD:    pArticle[ART_NO_STORE]= '0'; break;
+            case KUK_BOOTSTORAGE_EMMC4GB:   pArticle[ART_NO_STORE]= '1'; break;
+            case KUK_BOOTSTORAGE_EMMC8GB:   pArticle[ART_NO_STORE]= '2'; break;
+            case KUK_BOOTSTORAGE_EMMC16GB:  pArticle[ART_NO_STORE]= '3'; break;
+            default:                        pArticle[ART_NO_STORE]= 'x'; break;
         }
        
         pArticle[11]= '.';     
