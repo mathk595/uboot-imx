@@ -28,7 +28,7 @@ static void print_mmcinfo(struct mmc *mmc)
 
 	printf("Bus Speed: %d\n", mmc->clock);
 #if CONFIG_IS_ENABLED(MMC_VERBOSE)
-	printf("Mode : %s\n", mmc_mode_name(mmc->selected_mode));
+	printf("Mode: %s\n", mmc_mode_name(mmc->selected_mode));
 	mmc_dump_capabilities("card capabilities", mmc->card_caps);
 	mmc_dump_capabilities("host capabilities", mmc->host_caps);
 #endif
@@ -272,7 +272,7 @@ static int do_mmcrpmb(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 
 	if (!(mmc->version & MMC_VERSION_MMC)) {
-		printf("It is not a EMMC device\n");
+		printf("It is not an eMMC device\n");
 		return CMD_RET_FAILURE;
 	}
 	if (mmc->version < MMC_VERSION_4_41) {
@@ -462,6 +462,12 @@ static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
 
 	return CMD_RET_SUCCESS;
 }
+
+__weak int board_set_bootstorage_size(struct mmc *mmc)
+{
+	return -1;
+}
+
 static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
 		       int argc, char * const argv[])
 {
@@ -523,8 +529,9 @@ static int do_mmc_dev(cmd_tbl_t *cmdtp, int flag,
 	if( IS_SD(mmc) )
 	    env_set("bootdevice_type", "SD");
 	else
-	    env_set("bootdevice_type", "MMC");	  
-	
+	    env_set("bootdevice_type", "MMC");	
+  
+	board_set_bootstorage_size(mmc);	
 	return CMD_RET_SUCCESS;
 }
 static int do_mmc_list(cmd_tbl_t *cmdtp, int flag,
@@ -763,7 +770,7 @@ static int do_mmc_boot_resize(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 
 	if (IS_SD(mmc)) {
-		printf("It is not a EMMC device\n");
+		printf("It is not an eMMC device\n");
 		return CMD_RET_FAILURE;
 	}
 

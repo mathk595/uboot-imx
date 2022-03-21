@@ -581,11 +581,32 @@ void reset_out(int val)
   }
 }
 
+char ArticleText[256];
+
+void kuk_set_article_bootstorage( char *pArticle, int gigabyte, int isemmc);
+int board_set_bootstorage_size(struct mmc *mmc)
+{
+  unsigned long bootstore_size= mmc->capacity_user/(1024*1024*1024);
+  kuk_set_article_bootstorage( &ArticleText[0],  bootstore_size, (mmc->version&MMC_VERSION_MMC)?1:0);  
+  if( mmc->version & MMC_VERSION_MMC )
+  {      
+    printf("EMMC BootStorage User: %lld GB\n", mmc->capacity_user/(1024*1024*1024));
+    if( bootstore_size > 7 ) 
+    printf("EMMC BootStorage Boot: %lld MB\n", mmc->capacity_boot/(1024*1024));
+    printf("EMMC BootStorage Rpmb: %lld MB\n", mmc->capacity_rpmb/(1024*1024));
+  }else
+    printf("SD   BootStorage User: %llx\n", mmc->capacity_user);
+
+  printf("Module Assumed Art-No:<%s>\n", ArticleText);
+  env_set("kuk_article", ArticleText);  
+  return 0;
+}
+
 int board_init(void)
 {
 	char text[256];
-	kuk_GetArticleNo( &text[0], 24);
-	printf("Modul: %s\n", text);  
+	kuk_GetArticleNo( &ArticleText[0], 24);
+	printf("Modul: %s\n", ArticleText);  
 	kuk_GetDescription( &text[0], sizeof( text));
 	printf("%s\n", text);  
 	reset_out(1);
@@ -677,15 +698,28 @@ int sd1_was_already_1v8=0;
 
 int board_mmc_signal_voltage_eshdc( struct fsl_esdhc *regs, int volt)
 {
-	int version, ret = 1;
+        int version, module, ret = 0;
+	module = kuk_GetModule();	
+
+	// For Myon no switch needed just return 0
+	if( module == KUK_MODULE_MYON2 || module == KUK_MODULE_MYON2NANO )
+	{
+	  if( (volt < 3000000) )
+	    sd1_was_already_1v8=1;	  
+	  return 0;
+	}
 	
-	if( ((version=kuk_GetPCBrevision()) < KUK_PCBREV_V1R2) && volt < 3300000 )
+	if( (module == KUK_MODULE_TRIZEPS8MINI || module == KUK_MODULE_TRIZEPS8NANO) )
 	{
-	  printf("Trizeps8mini V1R%d does not support VMMC Voltage < 3.3V\n\r", version+1);	  
-	  return(1);
-	}	
-	switch ((unsigned long) regs)
-	{
+	    
+	  if(((version=kuk_GetPCBrevision()) < KUK_PCBREV_V1R2) && volt < 3300000)
+	  {
+	      printf("Trizeps8mini V1R%d does not support VMMC Voltage < 3.3V\n\r", version+1);	  
+	      return(1);
+	  }
+	  ret=1;	  
+	  switch ((unsigned long) regs)
+	  {
 	        case USDHC1_BASE_ADDR:
 		  if( (volt >= 3000000) || (volt==0) )
 		  {
@@ -745,7 +779,8 @@ int board_mmc_signal_voltage_eshdc( struct fsl_esdhc *regs, int volt)
 		    printf("Trizeps8mini V1R%d ESDHC@0x%lx set VMMC Voltage %d impossible \n\r", version+1,
 			(unsigned long) regs, volt);
 		  break;		  
-	}
+	  }
+	}	
 	return ret;
 }
 
@@ -768,12 +803,12 @@ int board_mmc_getcd(struct mmc *mmc, unsigned long esdhc_base)
 		break;
 	case USDHC2_BASE_ADDR:
 		ret = (mmc_get_op_cond(mmc) < 0) ? 0 : 1;
-	        printf("board_mmc_getcd@0x%lx->%d\n\r",(unsigned long) esdhc_base, ret);			  
+	        pr_debug("board_mmc_getcd@0x%lx->%d\n\r",(unsigned long) esdhc_base, ret);			  
 		return ret;
 		break;		
 	case USDHC3_BASE_ADDR:
 		ret = (mmc_get_op_cond(mmc) < 0) ? 0 : 1;
-	        printf("board_mmc_getcd@0x%lx->%d\n\r",(unsigned long) esdhc_base, ret);			  	  
+	        pr_debug("board_mmc_getcd@0x%lx->%d\n\r",(unsigned long) esdhc_base, ret);			  	  
 		return ret;
 		break;
 	default:
