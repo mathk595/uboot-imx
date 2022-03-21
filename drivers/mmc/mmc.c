@@ -22,6 +22,11 @@
 #include <div64.h>
 #include "mmc_private.h"
 
+#ifdef  DEBUG
+#undef  pr_debug
+#define pr_debug printf
+#endif
+
 int edhc_is_already_1v8_and_tuned(struct mmc *mmc);
 static int mmc_set_signal_voltage(struct mmc *mmc, uint signal_voltage);
 static int mmc_power_cycle(struct mmc *mmc);
@@ -2920,8 +2925,9 @@ int mmc_init(struct mmc *mmc)
 	if (mmc->cfg->ops->get_baseadr)
 	{
 	  baseadr=mmc->cfg->ops->get_baseadr(mmc);
-	}
-	pr_debug("mmc_init (NON DM):0x%lx(%d)\n",baseadr, mmc->has_init);
+	  pr_debug("mmc_init (NON DM):0x%lx(%d)\n",baseadr, mmc->has_init);
+	}else
+	  pr_debug("mmc_init (NON DM):has_init(%d)\n", mmc->has_init);	  
 #endif
 	
 	if (mmc->has_init)
