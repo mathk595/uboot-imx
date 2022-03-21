@@ -17,7 +17,11 @@
 #include <asm/arch/clock.h>
 #include <asm/mach-imx/gpio.h>
 #include <asm/mach-imx/mxc_i2c.h>
+#ifdef CONFIG_FSL_ESDHC_IMX
+#include <fsl_esdhc_imx.h>
+#else
 #include <fsl_esdhc.h>
+#endif
 #include <mmc.h>
 #include <asm/arch/ddr.h>
 
@@ -413,3 +417,14 @@ void board_init_f(ulong dummy)
 	}
 	board_init_r(NULL, 0);
 }
+
+#if 0
+int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	puts ("resetting ...\n");
+
+	reset_cpu(WDOG1_BASE_ADDR);
+
+	return 0;
+}
+#endif
