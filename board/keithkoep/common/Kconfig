@@ -97,6 +97,18 @@ config TRIZEPS8MINI_V1R2_4GB
        bool "Select V1R2 TRIZEPS8MINI with 4GB RAM and override possibly set OTP fuses"
        default n
 
+config TRIZEPS8MINI_V1R3_1GB
+       bool "Select V1R3 TRIZEPS8MINI with 1GB RAM and override possibly set OTP fuses"
+       default n
+
+config TRIZEPS8MINI_V1R3_2GB
+       bool "Select V1R3 TRIZEPS8MINI with 2GB RAM and override possibly set OTP fuses"
+       default n
+
+config TRIZEPS8MINI_V1R3_4GB
+       bool "Select V1R3 TRIZEPS8MINI with 4GB RAM and override possibly set OTP fuses"
+       default n
+
 config SBCSOM
        bool "Select SBCSOM, if no rev is set, OTP will select targetboard info"
        default n
