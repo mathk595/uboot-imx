@@ -677,12 +677,15 @@ static int detect_ipant7(struct display_info_t const *dev)
 static int detect_ipanm7(struct display_info_t const *dev)
 {
 	struct udevice *bus, *main_dev;
-	int i2c_bus = 1;
+	int i2c_bus = 2;
 	int ret;
 
 	//printf("%s:  %s \n", __func__, dev->mode.name);
 
 	//Check LVDS
+	gpio_request(IMX_GPIO_NR(1, 4), "LVDS EN");
+	gpio_direction_output(IMX_GPIO_NR(1, 4), 1);
+
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
 		//printf("%s: No bus %d\n", __func__, i2c_bus);
@@ -695,12 +698,12 @@ static int detect_ipanm7(struct display_info_t const *dev)
 		//	__func__, LVDS_ID, i2c_bus);
 		return 0;
 	}
-	
+
 	gpio_request(IMX_GPIO_NR(3, 23), "TOUCH EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 1);
 	
 	mdelay(10);
-
+	i2c_bus = 1;
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
 		//printf("%s: No bus %d\n", __func__, i2c_bus);
@@ -917,25 +920,22 @@ static int detect_display(struct display_info_t const *dev)
 	}
 	printk("%s: Try autodetect... %s \n", __func__, dev->mode.name);
 	module = kuk_GetModule();
-
-	if((!(strncmp(dev->mode.name, "RGB_ATM0700D6J", strlen(dev->mode.name)))) & (module == KUK_MODULE_TRIZEPS8MINI))
-	{
+	if( MODULE_IS_TRIZEPS8MINI_TYPE(module) )
+	{	    
+	    if((!(strncmp(dev->mode.name, "RGB_ATM0700D6J", strlen(dev->mode.name)))))
+	    {
+	        return detect_ipant7(dev);
+	    }
+	    else if((!(strncmp(dev->mode.name, "LVDS_ATM0700L61", strlen(dev->mode.name)))))
+	    {
 		return detect_ipant7(dev);
-	}
-	else if((!(strncmp(dev->mode.name, "LVDS_ATM0700L61", strlen(dev->mode.name)))))
-	{
-		return detect_ipant7(dev);
-	}
-	else if((!(strncmp(dev->mode.name, "LVDS_ATM0700D6J", strlen(dev->mode.name)))) & (module == KUK_MODULE_MYON2))
-	{
-		return detect_ipanm7(dev);
-	}
-	else if(!(strncmp(dev->mode.name, "LVDS_SCF1001C44GGU05", strlen(dev->mode.name))))
-	{
+	    }
+	    else if(!(strncmp(dev->mode.name, "LVDS_SCF1001C44GGU05", strlen(dev->mode.name))))
+	    {
 		return detect_ipant10(dev);
-	}
-	else if(!(strncmp(dev->mode.name, "LVDS_AM19201080D1", strlen(dev->mode.name))))
-	{
+	    }
+	    else if(!(strncmp(dev->mode.name, "LVDS_AM19201080D1", strlen(dev->mode.name))))
+	    {
 		if(detect_pconxs(dev, ILITEK_ID))
 		{
 			gpio_request(IMX_GPIO_NR(4, 14), "BL_EN");
@@ -945,9 +945,9 @@ static int detect_display(struct display_info_t const *dev)
 		}
 		else
 			return 0;
-	}
-	else if ((!(strncmp(dev->mode.name, "RGB18_ATM0700D6J", strlen(dev->mode.name)))) & (module == KUK_MODULE_TRIZEPS8MINI))
-	{
+	    }
+	    else if ((!(strncmp(dev->mode.name, "RGB18_ATM0700D6J", strlen(dev->mode.name)))))
+	    {
 		if(detect_pconxs(dev, FOCALTECH_ID))
 		{
 			kuk_panel_drv.lanes = 2;
@@ -956,9 +956,9 @@ static int detect_display(struct display_info_t const *dev)
 		}
 		else
 			return 0;
-	}
-	else if((!(strncmp(dev->mode.name, "LVDS_G156HAN02.1", strlen(dev->mode.name)))) & (module == KUK_MODULE_TRIZEPS8MINI))
-	{
+	    }
+	    else if((!(strncmp(dev->mode.name, "LVDS_G156HAN02.1", strlen(dev->mode.name)))))
+	    {
 		if(detect_pconxs(dev, EGALAX_ID))
 		{
 			gpio_request(IMX_GPIO_NR(3, 7), "PCIE_EN");
@@ -970,7 +970,12 @@ static int detect_display(struct display_info_t const *dev)
 		}
 		else
 			return 0;
+	    }
 	}
+	if((!(strncmp(dev->mode.name, "LVDS_ATM0700D6J", strlen(dev->mode.name))))    && MODULE_IS_MYON_TYPE(module))
+	{
+		return detect_ipanm7(dev);
+	}	    
 	else if(!(strncmp(dev->mode.name, "HDMI_1920x1080", strlen(dev->mode.name))))
 	{
 		return adv7535_init(dev);
