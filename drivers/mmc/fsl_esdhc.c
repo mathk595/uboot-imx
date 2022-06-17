@@ -440,7 +440,6 @@ static inline void sd_swap_dma_buff(struct mmc_data *data)
 	}
 }
 #endif
-
 /*
  * Sends a command out on the bus.  Takes the mmc pointer,
  * a command pointer, and an optional data pointer.
@@ -1267,12 +1266,39 @@ static unsigned long esdhc_getbaseadr(struct mmc *mmc)
 	return((unsigned long)priv->esdhc_regs);
 }
 
+#if CONFIG_IS_ENABLED(MMC_UHS_SUPPORT) && 0
+static int esdhc_wait_dat0(struct udevice *dev, int state,
+				  int timeout_us)
+{
+	struct fsl_esdhc_priv *priv = dev_get_priv(dev);
+	struct fsl_esdhc      *regs = priv->esdhc_regs;	
+	int    ret = -ETIMEDOUT;
+
+	/* Poll on DATA0 line for cmd with busy signal for 5000 ms */
+	while (timeout_us > 0 && !(esdhc_read32(&regs->prsstat) & PRSSTAT_DAT0)) {
+	  udelay(10);
+	  timeout_us-=10;
+	}
+
+	if (timeout_us <= 0) {
+	  printf("Timeout waiting for DAT0 to go high!\n");
+	  ret= -ETIMEDOUT;
+	}else
+	  ret=0;
+	
+	return ret;
+}
+#endif
+
 static const struct mmc_ops esdhc_ops = {
 	.getcd		= esdhc_getcd,
 	.init		= esdhc_init,
 	.send_cmd	= esdhc_send_cmd,
 	.set_ios	= esdhc_set_ios,
 	.get_baseadr    = esdhc_getbaseadr,
+#if CONFIG_IS_ENABLED(MMC_UHS_SUPPORT) && 0
+	.wait_dat0      = esdhc_wait_dat0,
+#endif	
 };
 #endif
 
