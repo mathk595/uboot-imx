@@ -691,20 +691,32 @@ static int detect_ipanm7(struct display_info_t const *dev)
 	int ret;
 
 	//printf("%s:  %s \n", __func__, dev->mode.name);
-
 	//Check LVDS
+	
 	gpio_request(IMX_GPIO_NR(1, 4), "LVDS EN");
 	gpio_direction_output(IMX_GPIO_NR(1, 4), 1);
+#if 1
+	/*                                                                         	          */
+	mdelay(60); //	when adding this line: u-boot stops. See below:
+	//CPU:   Commercial temperature grade (0C to 95C)Error in parsing TMU FDT -22
+	// ....
+	// Some drivers failed to bind
+	// initcall sequence 00000000fffb21c8 failed at call 000000004021c21c (err=-11)
+	//### ERROR ### Please RESET the board ###
+	/*                                                                         	          */
+	// CONFIG_OF_EMBED helps. Also #define DEBUG 1 in drivers/core/root.c (dm_init() problem)  
+	/*                                                                         	          */
+#endif
 
 	ret = uclass_get_device_by_seq(UCLASS_I2C, i2c_bus, &bus);
 	if (ret) {
-		//printf("%s: No bus %d\n", __func__, i2c_bus);
+	  //	printf("%s: No bus %d\n", __func__, i2c_bus);
 		return 0;
 	}
 	
 	ret = dm_i2c_probe(bus, LVDS_ID, 0, &main_dev);
 	if (ret) {
-		//printf("%s: Can't find device id=0x%x, on bus %d\n",
+	        //printf("%s: Can't find device id=0x%x, on bus %d\n",
 		//	__func__, LVDS_ID, i2c_bus);
 		return 0;
 	}
