@@ -595,7 +595,7 @@ enum KUK_BOOTSTORAGE {
     KUK_BOOTSTORAGE_EMMC16GB,
     KUK_BOOTSTORAGE_EMMC32GB
 };
-int kukt_GetBootStorage( void);
+int kuk_GetBootStorage( void);
 
 int kuk_GetArticleNo( char *pArticle, int maxsize );
 int kuk_GetDescription( char *pDescription, int maxsize );
