@@ -721,7 +721,7 @@ int board_mmc_signal_voltage_eshdc( struct fsl_esdhc *regs, int volt)
 	if( (module == KUK_MODULE_TRIZEPS8MINI || module == KUK_MODULE_TRIZEPS8NANO) )
 	{
 	    
-	  if(((version=kuk_GetPCBrevision()) < KUK_PCBREV_V1R2) && volt < 3300000)
+	  if(((version=kuk_GetPCBrevision()) <= KUK_PCBREV_V1R2) && volt < 3300000)
 	  {
 	      printf("Trizeps8mini V1R%d does not support VMMC Voltage < 3.3V\n\r", version+1);	  
 	      return(1);
@@ -847,6 +847,8 @@ int board_supports_uhs(unsigned long esdhc_base)
       printed=1;      
       return(1);
     }
+    if( kuk_GetBootStorage() != KUK_BOOTSTORAGE_SDCARD )
+      return(1);    
   }else
   {
     if( !printed)    
