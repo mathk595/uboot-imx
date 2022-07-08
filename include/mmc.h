@@ -922,4 +922,12 @@ int mmc_map_to_kernel_blk(int dev_no);
  */
 struct blk_desc *mmc_get_blk_desc(struct mmc *mmc);
 
+/**
+ * edhc_is_already_1v8_and_tuned() - Check if MMC is already running @ 1.8V
+ *                                   and is tuned
+ * @mmc:	MMC device
+ * @return 1 if running @ 1.8V and tuned, otherwise 0
+ */
+int edhc_is_already_1v8_and_tuned(struct mmc *mmc);
+
 #endif /* _MMC_H_ */

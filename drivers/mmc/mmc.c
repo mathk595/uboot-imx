@@ -27,7 +27,7 @@
 #define pr_debug printf
 #endif
 
-int edhc_is_already_1v8_and_tuned(struct mmc *mmc);
+//int edhc_is_already_1v8_and_tuned(struct mmc *mmc);
 static int mmc_set_signal_voltage(struct mmc *mmc, uint signal_voltage);
 static int mmc_power_cycle(struct mmc *mmc);
 #if !CONFIG_IS_ENABLED(MMC_TINY)

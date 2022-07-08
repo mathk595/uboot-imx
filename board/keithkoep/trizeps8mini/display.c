@@ -87,6 +87,16 @@ static void lvds_init(struct display_info_t const *dev)
 		valb[25] = 0x3C;	
 		valb[29] = 0x03;
 		valb[33] = 0x30;
+    }	
+	else if(strncmp(dev->mode.name, "GUF_LVDS_SCF1001C44GGU05", strlen(dev->mode.name)) == 0)
+	{
+		//SIS 9255
+		valb[7]  = 0x2A;	
+		valb[14] = 0x05;
+		valb[18] = 0x00;
+		valb[25] = 0x3C;	
+		valb[29] = 0x03;
+		valb[33] = 0x30;
     }
 	else if(strncmp(dev->mode.name, "PCONXS", strlen(dev->mode.name)) == 0)
 	{
@@ -584,7 +594,7 @@ void do_enable_mipi2hdmi(struct display_info_t const *dev)
 #define GOODIX_ID    0x5D //0x14
 #define ILITEK_ID    0x41 //0x14
 #define EGALAX_ID    0x2A // eGalax Touch / G156HAN02.1 Display (15.6" GuF)
-
+#define SIS9255_ID   0x5C // SIS 9255 Touch / SFC1001 10.1" Display
 
 #define	FT5X06_OP_REG_CHIPID   0xA3			/* vendor’s chip id */
 #define	FT5X06_OP_REG_FIRMID   0xA6			/* the firmware id of the application */
@@ -971,6 +981,20 @@ static int detect_display(struct display_info_t const *dev)
 		else
 			return 0;
 	    }
+		else if((!(strncmp(dev->mode.name, "GUF_LVDS_SCF1001C44GGU05", strlen(dev->mode.name)))))
+		{
+			if(detect_pconxs(dev, SIS9255_ID))
+			{
+			gpio_request(IMX_GPIO_NR(3, 7), "PCIE_EN");
+			gpio_direction_output(IMX_GPIO_NR(3, 7), 1);
+
+			kuk_panel_drv.lanes = 4;
+			kuk_panel_drv.name="GUF_LVDS_SCF1001C44GGU05";
+			return 1;
+		}
+		else
+			return 0;
+	}
 	}
 	if((!(strncmp(dev->mode.name, "LVDS_ATM0700D6J", strlen(dev->mode.name))))    && MODULE_IS_MYON_TYPE(module))
 	{
@@ -1032,6 +1056,26 @@ struct display_info_t const displays[] = {{
 	.enable	= do_enable_mipi2lvds,
 	.mode	= {
 		.name			= "LVDS_SCF1001C44GGU05",
+		.refresh		= 60,
+		.xres			= 1280,
+		.yres			= 800,
+		.pixclock		= 24390, /* 41000000 */
+		.left_margin	= 48,
+		.right_margin	= 52,
+		.upper_margin	= 10,
+		.lower_margin	= 10,
+		.hsync_len		= 60,
+		.vsync_len		= 3,
+		.sync			= FB_SYNC_EXT,
+		.vmode			= FB_VMODE_NONINTERLACED
+} }, {	
+	.bus = LCDIF_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = detect_display,
+	.enable	= do_enable_mipi2lvds,
+	.mode	= {
+		.name			= "GUF_LVDS_SCF1001C44GGU05",
 		.refresh		= 60,
 		.xres			= 1280,
 		.yres			= 800,

@@ -624,6 +624,15 @@ int board_init(void)
 	//init_camera_ov5640();	
 #endif
 #endif	
+	/* Re-Configure nRESET_OUT on MCU as input */
+	uint8_t mcu_reset_out_data[2] = { 0x57, 0x01 };
+	struct udevice *bus, *mcudev;
+	int ret = uclass_get_device_by_seq(UCLASS_I2C, 2, &bus);
+	if(!ret)
+		ret = dm_i2c_probe(bus, 0x10, 0, &mcudev);
+	if(!ret)
+		dm_i2c_write(mcudev, 0x04, mcu_reset_out_data, 2);
+
 	/* Enable Uart4/Uart2 pre-set in imx8mm_bl31_setup.c bl31_early_platform_setup2() */
 	setup_periph2mcu();
 	board_init_has_run=1;
