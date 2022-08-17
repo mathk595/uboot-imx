@@ -67,7 +67,7 @@ void spl_dram_init(void)
 		{
 		  
 		case KUK_RAMSIZE_1GB:
-		     if ( module == GUF_MODULE_TANARO)
+		     if ( ramskew == 1 || module == GUF_MODULE_TANARO)
 		     {
 		       printf("Choose dram_timing_v1r%d_1GB_K4F8E3S4HD\r\n", versno);			
 		       ddr_init(&dram_timing_v1r2_1GB_K4F8E3S4HD);	// 1GB RAM, 32bit LPDDR4, CH A/B <=> CH A/B                    
