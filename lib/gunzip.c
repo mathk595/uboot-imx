@@ -460,8 +460,7 @@ int gzwritefile(struct blk_desc *dev,
 		/* done when inflate() says it's done */
 	} while (r != Z_STREAM_END && !stop);
 
-	if (! stop ||
-		(szexpected != totalfilled) ||
+	if ((szexpected != totalfilled) ||
 	    (crc != expected_crc))
 		r = -1;
 	else

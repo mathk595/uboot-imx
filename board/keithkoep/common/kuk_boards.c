@@ -5,6 +5,7 @@
 #include <asm/arch/sys_proto.h>
 #include "kuk_boards.h"
 
+/*  NOTE FUSES can be altered from 0 to 1 */
 
 #define FUSE14_MODULE(x)        ((x & 0xF0000000)>>28)
 #define FUSE14_MODULE_TRIZEPS   0x1
@@ -21,6 +22,7 @@
 #define FUSE14_RAM_2GB          0x2 // Mono-Die
 #define FUSE14_RAM_4GB          0x4 // Dual-Die
 #define FUSE14_RAM_8GB          0x8 // Dual-Die
+#define FUSE14_RAM_1GB_ALT      0x9 // Tanaro based RAM
 #define FUSE14_RAM_2GB_DUALDIE  0xA // reserve/not use for now: 2GB Dual-Die; Engineering Samples without burned fuse used it.
 #define FUSE14_RAM_512MB        0xE
 #define FUSE14_RAM_AUTODETECT   0xF
@@ -178,6 +180,7 @@ int kuk_GetOTP( int key, int defaultval)
                     ret = KUK_RAMSIZE_512MB;
                     break;
                 case FUSE14_RAM_1GB:
+	        case FUSE14_RAM_1GB_ALT:
                     ret = KUK_RAMSIZE_1GB;
                     break;
                 case FUSE14_RAM_2GB:
@@ -205,6 +208,7 @@ int kuk_GetOTP( int key, int defaultval)
             switch( FUSE14_RAM(fuse14))
             {
                 case FUSE14_RAM_2GB:
+	        case FUSE14_RAM_1GB_ALT:
                     ret = 1;
                     break;
                 case FUSE14_RAM_2GB_DUALDIE:
