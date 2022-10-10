@@ -5,3 +5,4 @@
 ../tools/mkimage -A arm -T script -O linux -d  boot.debian.pConXS-7inch-ext4.txt        boot.debian.pConXS-7inch-ext4.scr
 ../tools/mkimage -A arm -T script -O linux -d  boot.debian-installer.txt                boot.debian-installer.scr
 ../tools/mkimage -A arm -T script -O linux -d  boot.debian-installer-ext4.txt           boot.debian-installer-ext4.scr
+../tools/mkimage -A arm -T script -O linux -d  boot.debian.iPanT7.tr8mv2r1.txt          boot.debian.iPanT7.tr8mv2r1.scr
