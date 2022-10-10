@@ -554,7 +554,15 @@ void do_enable_mipi2lvds(struct display_info_t const *dev)
 	gpio_request(IMX_GPIO_NR(3, 22), "BACKLIGHT EN");
 	gpio_direction_output(IMX_GPIO_NR(3, 22), 1);
 
+//	gpio_direction_output(IMX_GPIO_NR(3, 22), 1);
+
+	if(kuk_GetModule() == KUK_MODULE_TRIZEPS8MINI)
+	{
+		if(kuk_GetPCBrevision() <= KUK_PCBREV_V1R3)
+		{
 	lvds_init(dev);
+		}
+	}
 	
 	/* enable the dispmix & mipi phy power domain */
 	call_imx_sip(FSL_SIP_GPC, FSL_SIP_CONFIG_GPC_PM_DOMAIN, DISPMIX, true, 0);
@@ -955,6 +963,15 @@ static int detect_display(struct display_info_t const *dev)
 	    else if(!(strncmp(dev->mode.name, "LVDS_SCF1001C44GGU05", strlen(dev->mode.name))))
 	    {
 		return detect_ipant10(dev);
+		}
+		else if(!(strncmp(dev->mode.name, "PCONXS", strlen(dev->mode.name))))
+ 		{
+			if(detect_pconxs(dev, FOCALTECH_ID))
+			{
+				return 1;
+			}
+			else
+				return 0;
 	    }
 	    else if(!(strncmp(dev->mode.name, "LVDS_AM19201080D1", strlen(dev->mode.name))))
 	    {

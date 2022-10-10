@@ -642,6 +642,18 @@ config CMD_BIND
 	  drivers. For example, this can be used to bind a UDC to the usb ether
 	  gadget driver from the command line.
 
+config CMD_BX5_DUMP
+	bool "Dump Bx5 Registers"
+	help
+	  Prints the contents of several registers of the 
+	  QuickLogic ArcticLink III Bx5
+
+config CMD_BX5_ERROR
+	bool "Print Bx5 Error Registers"
+	help
+	  Prints the contents of the QuickLogic ArcticLink III Bx5 Error 
+	  Registers if available.
+
 config CMD_CLK
 	bool "clk - Show clock frequencies"
 	help

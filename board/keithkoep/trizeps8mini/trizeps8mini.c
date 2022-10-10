@@ -247,6 +247,11 @@ static iomux_v3_cfg_t const fec1_nrst_pads[] = {
 #define FEC_MODE2   IMX_GPIO_NR(1,25)
 #define FEC_MODE3   IMX_GPIO_NR(1,29)
 
+// for V2R1
+#define FEC_PHY_ADDR0 IMX_GPIO_NR(1,29)
+#define FEC_PHY_ADDR1 IMX_GPIO_NR(1,25)
+#define FEC_PHY_ADDR2 IMX_GPIO_NR(1,24)
+
 static iomux_v3_cfg_t const fec1_rst_pads[] = {
     IMX8MM_PAD_GPIO1_IO09_GPIO1_IO9           | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
 	IMX8MM_PAD_ENET_RX_CTL_GPIO1_IO24         | MUX_PAD_CTRL(GPIO_PAD_PD_CTRL),
@@ -261,10 +266,25 @@ static void setup_iomux_fec(void)
 {
 
 	// printf("%s: reset fec\n", __func__);
+	printf("%s: PCBrevision=%d\n",__FUNCTION__,kuk_GetPCBrevision());
 	imx_iomux_v3_setup_multiple_pads(fec1_rst_pads, ARRAY_SIZE(fec1_rst_pads));
 	gpio_request(FEC_RST_PAD, "fec1_rst");
 	gpio_direction_output(FEC_RST_PAD, 0);
 	udelay(1000);		
+	if(kuk_GetPCBrevision() >= 3)
+	{
+		gpio_request(FEC_PHY_ADDR0, "fec_phy_addr0");
+		gpio_direction_output(FEC_PHY_ADDR0, 0);
+		gpio_request(FEC_PHY_ADDR1, "fec_phy_addr1");
+		gpio_direction_output(FEC_PHY_ADDR1, 0);
+		gpio_request(FEC_PHY_ADDR2, "fec_phy_addr2");
+		gpio_direction_output(FEC_PHY_ADDR2, 1);
+		mdelay(15);
+		gpio_direction_output(FEC_RST_PAD, 1);
+		mdelay(100);
+	}
+	else
+	{
 #if 1
 	gpio_request(FEC_MODE0,"fec_mode0");	gpio_direction_output(FEC_MODE0, 0);
 	gpio_request(FEC_MODE1,"fec_mode1");	gpio_direction_output(FEC_MODE1, 0);
@@ -276,6 +296,8 @@ static void setup_iomux_fec(void)
 	gpio_direction_output(FEC_RST_PAD, 0);
 	udelay(1000);
 	gpio_direction_output(FEC_RST_PAD, 1);
+	}
+
 	imx_iomux_v3_setup_multiple_pads(fec1_nrst_pads, ARRAY_SIZE(fec1_nrst_pads));
 	udelay(1000);
 
@@ -720,11 +742,17 @@ int board_mmc_signal_voltage_eshdc( struct fsl_esdhc *regs, int volt)
 	
 	if( (module == KUK_MODULE_TRIZEPS8MINI || module == KUK_MODULE_TRIZEPS8NANO) )
 	{
-	    
-	  if(((version=kuk_GetPCBrevision()) <= KUK_PCBREV_V1R2) && volt < 3300000)
+
+	  if(((version=kuk_GetPCBrevision()) <= KUK_PCBREV_V1R2) && volt < 3000000)
 	  {
-	      printf("Trizeps8mini V1R%d does not support VMMC Voltage < 3.3V\n\r", version+1);	  
-	      return(1);
+	    if( kuk_GetBootStorage() != KUK_BOOTSTORAGE_SDCARD )
+	    {
+	      printf("Trizeps8mini V1R%d MMC ever supports VMMC Voltage < 3.3V (%d)\n\r", version+1, volt);	  	       
+	      sd1_was_already_1v8=1;
+	      return(0);
+	    }
+	    printf("Trizeps8mini V1R%d does not support VMMC Voltage < 3.3V (%d)\n\r", version+1, volt);	  
+	    return(1);
 	  }
 	  ret=1;	  
 	  switch ((unsigned long) regs)

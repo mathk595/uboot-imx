@@ -663,6 +663,8 @@
 /* Trizeps8Mini Custom Firmware Version Commands */
 #define CONFIG_CMD_FPGA_REV
 #define CONFIG_CMD_MCU_REV
+#define CONFIG_CMD_BX5_DUMP
+#define CONFIG_CMD_BX5_ERROR
 /*************************************************************************************************************/
 /* Modify config for Android                                                                                 */
 /*************************************************************************************************************/
