@@ -1,8 +1,9 @@
 # Declare files that always have LF line endings on checkout
-* text eol=lf
+* text eol=auto
 # Denote all files that are truly binary and should not be modified
 *.bmp binary
 *.ttf binary
+*.tga binary
 # ADD uuu Binary
 uuu binary
 
